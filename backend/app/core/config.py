@@ -4,7 +4,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "SIHS API"
     app_env: str = "development"
-    database_url: str = "postgresql+psycopg://postgres:postgrespassword@localhost:5432/sistema_sihs"
+
+    # Conexión de runtime (transaction pooler de Supabase, puerto 6543)
+    database_url: str = "postgresql+psycopg://usuario:contrasena@localhost:5432/sihs"
+    # Conexión para Alembic (session pooler, puerto 5432 — DDL necesita modo sesión)
+    alembic_database_url: str = ""
+
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    # Secreta: solo para tareas admin del backend, jamás se expone al frontend
+    supabase_service_role_key: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

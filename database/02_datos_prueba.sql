@@ -1,21 +1,31 @@
--- Datos de prueba — Base de datos sistema_sihs (PostgreSQL)
+-- Datos de prueba — Base de datos sistema_sihs (PostgreSQL / Supabase)
 --
--- Ejecutar después de 01_creacion.sql, sobre una base ya creada y vacía:
---   psql -U postgres -h localhost -p 5432 -d sistema_sihs -f 02_datos_prueba.sql
+-- Ejecutar después de 01_creacion.sql, contra el proyecto de Supabase del
+-- equipo (SQL Editor, o psql con el connection string del proyecto):
+--   psql "<connection string de Supabase>" -f 02_datos_prueba.sql
 --
--- Las contraseñas de ejemplo son hashes falsos (hash1, hash2...) solo para
--- poder insertar algo en "password" sin bcrypt a mano — no sirven para
--- iniciar sesión de verdad. Para crear un administrador funcional, usar
--- Backend/seed.py, que sí genera un hash real.
+-- AUTENTICACIÓN: este proyecto usa Supabase Auth, no una contraseña propia
+-- en "usuarios" (ver AUDITORIA_TECNICA.md sección 6). Por eso los 4 usuarios
+-- de prueba de más abajo NO se insertan con un INSERT normal a "usuarios":
+-- primero se crean en auth.users (la tabla de Supabase Auth) y recién ahí se
+-- crea su fila de perfil en "usuarios" con el mismo UUID — es exactamente lo
+-- que hace un signup real, solo que aquí lo hacemos por SQL directo para no
+-- depender de tener el backend corriendo. La contraseña de los 4 (real, no
+-- un hash de mentira) es "Prueba123!" — sirve para iniciar sesión de verdad
+-- contra Supabase Auth y probar el backend con un token válido.
 
 -- =========================
 -- ROLES
 -- =========================
+-- ON CONFLICT DO NOTHING: por si ya se sembraron los roles antes (p. ej. a
+-- mano, al configurar el primer Administrador) — así este script se puede
+-- volver a correr sin que falle en el primer INSERT.
 INSERT INTO roles ("nombre") VALUES
 ('Administrador'),
 ('Coordinador'),
 ('Instructor'),
-('Aprendiz');
+('Aprendiz')
+ON CONFLICT ("nombre") DO NOTHING;
 
 -- =========================
 -- ESTRUCTURA ACADÉMICA BASE
@@ -74,15 +84,63 @@ INSERT INTO especialidades ("nombre", "descripcion") VALUES
 ('Mecánica Industrial', 'Mantenimiento de maquinaria y equipos');
 
 -- =========================
--- USUARIOS
+-- USUARIOS (vía Supabase Auth)
 -- =========================
-INSERT INTO usuarios ("nombre", "email", "password") VALUES
-('Juan Perez', 'juan@mail.com', 'hash1'),
-('Maria Gomez', 'maria@mail.com', 'hash2'),
-('Carlos Lopez', 'carlos@mail.com', 'hash3'),
-('Ana Martinez', 'ana@mail.com', 'hash4');
+-- Paso 1: crear los usuarios en auth.users (Supabase Auth). pgcrypto es la
+-- extensión que da crypt()/gen_salt() para generar un hash de contraseña
+-- real, igual que lo haría Supabase al hacer signup. Ya viene disponible en
+-- todo proyecto Supabase, esto solo la activa si hiciera falta.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Roles: Juan y Maria -> Aprendiz, Carlos -> Instructor, Ana -> Coordinador
+-- (sin ON CONFLICT: auth.users no tiene un unique constraint simple sobre
+-- email que se pueda usar ahí — el WHERE NOT EXISTS de abajo cumple la
+-- misma función de "no duplicar si ya corrí esto antes")
+INSERT INTO auth.users (
+    instance_id, id, aud, role, email, encrypted_password,
+    email_confirmed_at, created_at, updated_at,
+    confirmation_token, recovery_token, email_change_token_new, email_change,
+    raw_app_meta_data, raw_user_meta_data, is_super_admin
+)
+SELECT '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', datos.email, crypt('Prueba123!', gen_salt('bf')), now(), now(), now(), '', '', '', '', '{"provider":"email","providers":["email"]}', '{}', false
+FROM (VALUES
+    ('juan@mail.com'),
+    ('maria@mail.com'),
+    ('carlos@mail.com'),
+    ('ana@mail.com'),
+    ('admin@mail.com')
+) AS datos(email)
+WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.email = datos.email);
+
+-- Paso 2: auth.identities — sin esto Supabase Auth no deja iniciar sesión
+-- con estos usuarios (busca ahí el proveedor "email" antes de validar).
+INSERT INTO auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+SELECT gen_random_uuid(), u.id, u.id::text, jsonb_build_object('sub', u.id::text, 'email', u.email), 'email', now(), now(), now()
+FROM auth.users u
+WHERE u.email IN ('juan@mail.com', 'maria@mail.com', 'carlos@mail.com', 'ana@mail.com', 'admin@mail.com')
+  AND NOT EXISTS (
+      SELECT 1 FROM auth.identities i WHERE i.user_id = u.id AND i.provider = 'email'
+  );
+
+-- Paso 3: la fila de perfil en "usuarios" — mismo UUID que en auth.users.
+INSERT INTO usuarios ("idUsuario", "nombre", "email")
+SELECT id, 'Juan Perez', email FROM auth.users WHERE email = 'juan@mail.com'
+UNION ALL
+SELECT id, 'Maria Gomez', email FROM auth.users WHERE email = 'maria@mail.com'
+UNION ALL
+SELECT id, 'Carlos Lopez', email FROM auth.users WHERE email = 'carlos@mail.com'
+UNION ALL
+SELECT id, 'Ana Martinez', email FROM auth.users WHERE email = 'ana@mail.com'
+UNION ALL
+SELECT id, 'Admin de Pruebas', email FROM auth.users WHERE email = 'admin@mail.com'
+ON CONFLICT ("idUsuario") DO NOTHING;
+
+-- Roles: Juan y Maria -> Aprendiz, Carlos -> Instructor, Ana -> Coordinador,
+-- admin@mail.com -> Administrador (para poder probar /roles y /usuario-rol
+-- sin tener que hacer el bootstrap manual descrito en PENDIENTE_MVP.md)
+INSERT INTO usuario_rol ("idUsuario", "idRol")
+SELECT u."idUsuario", r."idRol" FROM usuarios u, roles r
+WHERE u."email" = 'admin@mail.com' AND r."nombre" = 'Administrador';
+
 INSERT INTO usuario_rol ("idUsuario", "idRol")
 SELECT u."idUsuario", r."idRol" FROM usuarios u, roles r
 WHERE u."email" = 'juan@mail.com' AND r."nombre" = 'Aprendiz';

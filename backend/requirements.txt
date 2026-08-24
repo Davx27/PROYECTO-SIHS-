@@ -26,8 +26,9 @@ typing_extensions==4.16.0
 uvicorn==0.52.4
 watchfiles==1.2.0
 websockets==17.0.1
-alembic==1.16.4
-passlib[bcrypt]==1.7.4
-psycopg[binary]==3.2.10
-python-jose[cryptography]==3.5.0
-SQLAlchemy==2.0.43
+
+pydantic[email]==2.13.4
+# Base de datos (Supabase/PostgreSQL) -- agregado para Fase 0/1
+sqlalchemy>=2.0
+psycopg[binary]>=3.2
+alembic>=1.13
