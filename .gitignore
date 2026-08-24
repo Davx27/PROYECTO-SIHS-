@@ -1,3 +1,6 @@
+# Raíz
+.env
+
 # Backend
 backend/venv/
 backend/.venv/
