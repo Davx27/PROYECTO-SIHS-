@@ -150,8 +150,13 @@ CREATE TABLE sedes (
 
 CREATE TABLE ambientes (
     "idAmbiente"     SERIAL PRIMARY KEY,
+    "numeroAmbiente" INTEGER NOT NULL,
     "nombreAmbiente" VARCHAR(100) NOT NULL,
-    "idSede"         INTEGER NOT NULL REFERENCES sedes("idSede")
+    "tipoAmbiente"   VARCHAR(20) NOT NULL CHECK ("tipoAmbiente" IN ('regular', 'especial')),
+    "estadoAmbiente" VARCHAR(30) NOT NULL DEFAULT 'disponible' CHECK ("estadoAmbiente" IN ('disponible', 'mantenimiento', 'inactivo')),
+    "idSede"         INTEGER NOT NULL REFERENCES sedes("idSede"),
+    CONSTRAINT "uqAmbienteNumeroSede" UNIQUE ("numeroAmbiente", "idSede"),
+    CONSTRAINT "nombreAmbienteRegular" CHECK ("tipoAmbiente" = 'especial' OR "nombreAmbiente" = 'Ambiente')
 );
 
 -- =========================================================
