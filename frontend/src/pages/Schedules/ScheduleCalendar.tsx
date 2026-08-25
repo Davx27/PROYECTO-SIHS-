@@ -1,0 +1,2 @@
+import { schedulesApi } from "../../api/schedules.api";
+export default function ScheduleCalendar() { const blocks = schedulesApi.list(); return <div className="schedule-calendar">{schedulesApi.days.map((day) => <section key={day}><h2>{day}</h2>{blocks.filter((block) => block.dia === day).map((block) => <article key={block.id}><strong>{block.jornada} · Bloque {block.bloque}</strong><span>Ficha {block.ficha}</span><span>{block.instructor} · {block.ambiente}</span></article>)}{!blocks.some((block) => block.dia === day) && <p>Sin asignaciones</p>}</section>)}</div>; }

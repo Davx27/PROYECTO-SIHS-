@@ -1,0 +1,4 @@
+import { Link, useNavigate } from "react-router-dom";
+import type { Role } from "../../types/auth";
+import { useState } from "react";
+export default function RegisterRole() { const [role, setRole] = useState<Role>("APRENDIZ"); const navigate = useNavigate(); return <main className="page-shell"><p className="eyebrow">Registro de usuario</p><h1>Elige tu perfil</h1><p>Selecciona el tipo de cuenta para mostrar los campos correspondientes.</p><div className="role-options">{(["APRENDIZ", "INSTRUCTOR", "COORDINADOR"] as Role[]).map((option) => <button type="button" className={role === option ? "role-option selected" : "role-option"} key={option} onClick={() => setRole(option)}>{option}</button>)}</div><button className="button" type="button" onClick={() => navigate(`/register/form?role=${role}`)}>Continuar</button><p><Link to="/login">Volver al inicio de sesión</Link></p></main>; }

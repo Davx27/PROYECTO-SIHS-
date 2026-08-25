@@ -1,0 +1,1 @@
+export type Fiche = { id: string; numero: string; jornada: "MAÑANA" | "TARDE" | "NOCHE" | "MIXTA"; programa: string; area: "TECNICO" | "TECNOLOGO"; nivel: string; trimestre: number; inicio: string; finLectiva: string; finProductiva: string; aprendices: number; estado: "EN_FORMACION" | "FINALIZADA" };
