@@ -1,177 +1,200 @@
-import { useEffect, useState } from 'react'
-import senaLogo from '../assets/sena-logo.jpeg'
-import { useAuth } from '../hooks/useAuth'
-import { apiGet, ApiError } from '../services/api'
-import type { Rol, Usuario } from '../types/api'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { AppShell } from '../components/AppShell'
 
-const NAV_DISPONIBLE = ['Dashboard']
-const NAV_PENDIENTE = ['Horarios', 'Ambientes', 'Instructores', 'Fichas', 'Reportes']
+type Turno = 'manana' | 'tarde'
+type Estado = 'Confirmado' | 'Cruce' | 'Por confirmar'
 
-/**
- * Único punto de la app (por ahora) que consume el backend más allá de
- * Supabase Auth. Todo lo que se ve acá viene de:
- *   - GET /usuarios/me        → cualquier usuario autenticado
- *   - GET /usuarios           → solo Administrador (403 para los demás)
- *   - GET /roles              → solo Administrador (403 para los demás)
- *
- * A propósito NO se inventan datos de "horarios activos" / "cruces
- * detectados" / "ambientes disponibles" como en el mockup original — esos
- * módulos no existen todavía en el backend (ver
- * backend/OBJETIVO_Y_SERVICIOS_FALTANTES.md). Cuando existan, agregar su
- * fetch acá siguiendo el mismo patrón que useEffect() de abajo.
- */
+interface FilaHorario {
+  hora: string
+  turno: Turno
+  ficha: string
+  programa: string
+  instructor: string
+  ambiente: string
+  estado: Estado
+}
+
+// Réplica fiel de _Docs/Diseño/mockups-institucionales/03-dashboard.png.
+// El módulo "Horarios" real (backend/OBJETIVO_Y_SERVICIOS_FALTANTES.md)
+// todavía no existe, así que TODO lo de esta pantalla (los 3 KPIs y la
+// tabla) es el mismo dato de ejemplo que trae el mockup — no viene de
+// ningún endpoint. Reemplazar por fetches reales (GET /horarios, etc.)
+// en cuanto existan, siguiendo el patrón de apiGet documentado en
+// frontend/ESTRUCTURA.md.
+const HORARIO_HOY: FilaHorario[] = [
+  { hora: '06:00', turno: 'manana', ficha: '2758431', programa: 'Análisis y Desarrollo de Software', instructor: 'Óscar Bermúdez', ambiente: 'Lab 204', estado: 'Confirmado' },
+  { hora: '08:00', turno: 'manana', ficha: '2691205', programa: 'Gestión Logística', instructor: 'Marcela Ávila', ambiente: 'Aula 108', estado: 'Confirmado' },
+  { hora: '10:00', turno: 'manana', ficha: '2744019', programa: 'Técnico en Programación de Software', instructor: 'Óscar Bermúdez', ambiente: 'Lab 204', estado: 'Cruce' },
+  { hora: '13:00', turno: 'tarde', ficha: '2803577', programa: 'Gestión de Mercados', instructor: 'Julián Torres', ambiente: 'Aula 212', estado: 'Confirmado' },
+  { hora: '15:00', turno: 'tarde', ficha: '2712880', programa: 'Tecnólogo en Gestión de Redes de Datos', instructor: 'Sandra Peña', ambiente: 'Lab 301', estado: 'Por confirmar' },
+  { hora: '18:00', turno: 'tarde', ficha: '2766142', programa: 'Contabilización de Operaciones', instructor: 'Diego Salcedo', ambiente: 'Aula 115', estado: 'Confirmado' },
+]
+
+const FILTROS = [
+  { id: 'todos', etiqueta: 'Todos' },
+  { id: 'manana', etiqueta: 'Mañana' },
+  { id: 'tarde', etiqueta: 'Tarde' },
+] as const
+
+const badgeEstado: Record<Estado, string> = {
+  Confirmado: 'bg-emerald-50 text-emerald-700',
+  Cruce: 'bg-orange-50 text-orange-700',
+  'Por confirmar': 'bg-slate-100 text-slate-600',
+}
+
+const fechaHoy = (() => {
+  const texto = new Date().toLocaleDateString('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+})()
+
 export function Dashboard() {
-  const { signOut } = useAuth()
+  const [filtro, setFiltro] = useState<(typeof FILTROS)[number]['id']>('todos')
 
-  const [miPerfil, setMiPerfil] = useState<Usuario | null>(null)
-  const [usuarios, setUsuarios] = useState<Usuario[] | 'sin-permiso' | null>(null)
-  const [roles, setRoles] = useState<Rol[] | 'sin-permiso' | null>(null)
-
-  useEffect(() => {
-    apiGet<Usuario>('/usuarios/me').then(setMiPerfil)
-
-    apiGet<Usuario[]>('/usuarios').then(setUsuarios).catch((err: ApiError) => {
-      if (err.status === 403) setUsuarios('sin-permiso')
-    })
-
-    apiGet<Rol[]>('/roles').then(setRoles).catch((err: ApiError) => {
-      if (err.status === 403) setRoles('sin-permiso')
-    })
-  }, [])
+  const filas = filtro === 'todos' ? HORARIO_HOY : HORARIO_HOY.filter((f) => f.turno === filtro)
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <aside className="hidden w-60 shrink-0 border-r border-slate-200 bg-white p-5 sm:block">
-        <div className="mb-8 flex items-center gap-2.5">
-          <img src={senaLogo} alt="SENA" className="h-9 w-9 rounded-lg object-cover" />
+    <AppShell activo="Inicio">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="mb-1 text-2xl font-bold text-slate-900">Panel de programación</h1>
+          <p className="text-sm text-slate-500">
+            Centro de Gestión de Mercados, Logística y TI · {fechaHoy}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            disabled
+            title="Aún no implementado en el backend"
+            className="cursor-not-allowed rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+          >
+            Exportar
+          </button>
+          <Link
+            to="/horarios/nuevo"
+            className="rounded-lg bg-sena-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sena-700"
+          >
+            Nuevo horario
+          </Link>
+        </div>
+      </div>
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-medium tracking-wide text-slate-400 uppercase">
+              Horarios activos
+            </p>
+            <span className="h-6 w-6 rounded-md bg-emerald-50" />
+          </div>
+          <p className="text-3xl font-bold text-slate-900">128</p>
+          <p className="mt-1 text-sm font-medium text-emerald-600">
+            +6 respecto al trimestre anterior
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-medium tracking-wide text-slate-400 uppercase">
+              Cruces detectados
+            </p>
+            <span className="h-6 w-6 rounded-md bg-orange-50" />
+          </div>
+          <div className="flex items-center gap-2">
+            <p className="text-3xl font-bold text-slate-900">7</p>
+            <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
+              Requiere revisión
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-slate-500">4 por instructor · 3 por ambiente</p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-medium tracking-wide text-slate-400 uppercase">
+              Ambientes disponibles
+            </p>
+            <span className="h-6 w-6 rounded-md bg-slate-100" />
+          </div>
+          <p className="text-3xl font-bold text-slate-900">
+            19 <span className="text-lg font-medium text-slate-400">/ 34</span>
+          </p>
+          <div className="mt-3 h-1.5 w-full rounded-full bg-slate-100">
+            <div className="h-1.5 rounded-full bg-sena-600" style={{ width: '56%' }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-bold text-slate-900">SIHS</p>
-            <p className="text-xs text-slate-500">CGMLTI</p>
+            <p className="text-lg font-semibold text-slate-900">Horario de hoy</p>
+            <p className="text-sm text-slate-500">
+              {HORARIO_HOY.length} sesiones programadas · jornada mixta
+            </p>
+          </div>
+
+          <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+            {FILTROS.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFiltro(f.id)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  filtro === f.id
+                    ? 'bg-sena-50 text-sena-700'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {f.etiqueta}
+              </button>
+            ))}
           </div>
         </div>
 
-        <p className="mb-2 text-xs font-semibold tracking-wide text-slate-400">GESTIÓN</p>
-        <nav className="space-y-1">
-          {NAV_DISPONIBLE.map((item) => (
-            <span
-              key={item}
-              className="block rounded-lg bg-sena-50 px-3 py-2 text-sm font-medium text-sena-700"
-            >
-              {item}
-            </span>
-          ))}
-          {NAV_PENDIENTE.map((item) => (
-            <span
-              key={item}
-              title="Módulo aún no implementado en el backend"
-              className="flex cursor-not-allowed items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-400"
-            >
-              {item}
-              <span className="text-[10px] uppercase">pronto</span>
-            </span>
-          ))}
-        </nav>
-      </aside>
-
-      <div className="flex-1">
-        <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3">
-          <input
-            type="search"
-            placeholder="Buscar ficha, instructor o ambiente…"
-            disabled
-            className="w-full max-w-sm rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-400 placeholder:text-slate-400"
-          />
-
-          <div className="flex items-center gap-3">
-            {miPerfil && (
-              <div className="text-right">
-                <p className="text-sm font-semibold text-slate-900">{miPerfil.nombre}</p>
-                <p className="text-xs text-slate-500">{miPerfil.email}</p>
-              </div>
-            )}
-            <button
-              onClick={() => void signOut()}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        </header>
-
-        <main className="p-6">
-          <h1 className="mb-1 text-2xl font-bold text-slate-900">Panel de programación</h1>
-          <p className="mb-6 text-sm text-slate-500">
-            Centro de Gestión de Mercados, Logística y TI
-          </p>
-
-          <div className="mb-6 grid gap-4 sm:grid-cols-3">
-            <Tarjeta titulo="Mi perfil (GET /usuarios/me)">
-              {miPerfil ? (
-                <>
-                  <p className="text-lg font-semibold text-slate-900">{miPerfil.nombre}</p>
-                  <p className="text-sm text-slate-500">{miPerfil.email}</p>
-                  <p className="mt-1 text-xs text-slate-400">Estado: {miPerfil.estado}</p>
-                </>
-              ) : (
-                <p className="text-sm text-slate-400">Cargando…</p>
-              )}
-            </Tarjeta>
-
-            <Tarjeta titulo="Usuarios registrados (GET /usuarios)">
-              <EstadoAdmin dato={usuarios} render={(lista) => (
-                <p className="text-3xl font-bold text-slate-900">{lista.length}</p>
-              )} />
-            </Tarjeta>
-
-            <Tarjeta titulo="Roles del sistema (GET /roles)">
-              <EstadoAdmin dato={roles} render={(lista) => (
-                <ul className="space-y-0.5 text-sm text-slate-700">
-                  {lista.map((rol) => (
-                    <li key={rol.idRol}>{rol.nombre}</li>
-                  ))}
-                </ul>
-              )} />
-            </Tarjeta>
-          </div>
-
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-500">
-            <p className="font-semibold text-slate-700">
-              Horarios, ambientes, instructores y fichas todavía no tienen módulo en el backend.
-            </p>
-            <p className="mt-1">
-              Ver <code className="rounded bg-slate-100 px-1.5 py-0.5">
-                backend/OBJETIVO_Y_SERVICIOS_FALTANTES.md
-              </code>{' '}
-              para el orden recomendado de implementación — cuando exista el endpoint, esta
-              pantalla es el lugar donde se conecta siguiendo el mismo patrón de{' '}
-              <code className="rounded bg-slate-100 px-1.5 py-0.5">apiGet</code> de arriba.
-            </p>
-          </div>
-        </main>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-xs uppercase text-slate-400">
+                <th className="py-2 pr-4 font-medium">Hora</th>
+                <th className="py-2 pr-4 font-medium">Ficha</th>
+                <th className="py-2 pr-4 font-medium">Programa</th>
+                <th className="py-2 pr-4 font-medium">Instructor</th>
+                <th className="py-2 pr-4 font-medium">Ambiente</th>
+                <th className="py-2 font-medium">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((fila) => (
+                <tr
+                  key={fila.hora}
+                  className={`border-b border-slate-100 last:border-0 ${
+                    fila.estado === 'Cruce' ? 'bg-orange-50/40' : ''
+                  }`}
+                >
+                  <td className="py-3 pr-4 font-semibold text-slate-900">{fila.hora}</td>
+                  <td className="py-3 pr-4 text-slate-700">{fila.ficha}</td>
+                  <td className="py-3 pr-4 text-slate-700">{fila.programa}</td>
+                  <td className="py-3 pr-4 text-slate-700">{fila.instructor}</td>
+                  <td className="py-3 pr-4 text-slate-700">{fila.ambiente}</td>
+                  <td className="py-3">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badgeEstado[fila.estado]}`}
+                    >
+                      {fila.estado}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </AppShell>
   )
-}
-
-function Tarjeta({ titulo, children }: { titulo: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5">
-      <p className="mb-3 text-xs font-medium tracking-wide text-slate-400 uppercase">{titulo}</p>
-      {children}
-    </div>
-  )
-}
-
-function EstadoAdmin<T>({
-  dato,
-  render,
-}: {
-  dato: T[] | 'sin-permiso' | null
-  render: (lista: T[]) => React.ReactNode
-}) {
-  if (dato === null) return <p className="text-sm text-slate-400">Cargando…</p>
-  if (dato === 'sin-permiso') {
-    return <p className="text-sm text-amber-600">Requiere rol Administrador</p>
-  }
-  return <>{render(dato)}</>
 }

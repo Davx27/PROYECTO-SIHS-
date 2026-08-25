@@ -1,12 +1,16 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AuthLayout } from '../components/AuthLayout'
 import { FormField } from '../components/FormField'
 import { supabase } from '../services/supabaseClient'
 
 /** También va directo a Supabase Auth (resetPasswordForEmail) — el envío
- * del correo de recuperación lo maneja Supabase, no el backend. */
+ * del correo de recuperación lo maneja Supabase, no el backend. El correo
+ * trae un código de 6 dígitos que se valida en
+ * RestablecerContrasena.tsx (supabase.auth.verifyOtp), no un link que
+ * redirija de vuelta a la app. */
 export function RecuperarContrasena() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,9 +57,19 @@ export function RecuperarContrasena() {
       </p>
 
       {enviado ? (
-        <p className="rounded-lg bg-sena-50 p-4 text-center text-sm text-sena-700">
-          Si el correo existe en el sistema, te llegarán las instrucciones en unos minutos.
-        </p>
+        <div>
+          <p className="mb-4 rounded-lg bg-sena-50 p-4 text-center text-sm text-sena-700">
+            Si el correo existe en el sistema, te llegará un código de verificación en unos
+            minutos.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/restablecer-contrasena', { state: { email } })}
+            className="w-full rounded-lg bg-sena-600 py-3 font-semibold text-white transition hover:bg-sena-700"
+          >
+            Ya tengo mi código
+          </button>
+        </div>
       ) : (
         <form onSubmit={handleSubmit}>
           <FormField
@@ -81,7 +95,7 @@ export function RecuperarContrasena() {
       )}
 
       <p className="mt-5 text-center text-xs text-slate-400">
-        El enlace es válido por 30 minutos y de un solo uso.
+        El código es válido por 30 minutos y de un solo uso.
       </p>
 
       <p className="mt-6 border-t border-slate-100 pt-5 text-center text-sm font-semibold text-sena-700">
