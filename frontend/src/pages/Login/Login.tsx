@@ -16,8 +16,9 @@ export default function LoginPage() {
     try{await login({documento,password});navigate("/dashboard");}
     catch{const n=attempts+1;setAttempts(n);setError(n>=3?"Usuario bloqueado después de 3 intentos.":"Algún dato ingresado es erróneo, por favor verifíquelo.");}
   }
-  return <form onSubmit={submit}>
-    <h2>Iniciar sesión</h2>
+  return <form className="login-form" onSubmit={submit}>
+    <div className="login-brand"><span className="login-brand-mark">S</span><div><strong>SIHS</strong><small>Gestión de Horarios</small></div></div>
+    <div className="login-heading"><p className="eyebrow">Acceso al sistema</p><h2>Iniciar sesión</h2><p>Ingresa tus datos para continuar.</p></div>
     <Input label="Número de documento" value={documento} onChange={e=>setDocumento(e.target.value)} required />
     <Input label="Contraseña" type="password" value={password} onChange={e=>setPassword(e.target.value)} required />
     <PasswordStrengthIndicator password={password} />
