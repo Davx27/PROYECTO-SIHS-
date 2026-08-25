@@ -1,18 +1,29 @@
--- Script de creación — Base de datos sistema_sihs (PostgreSQL)
+-- Script de creación — Base de datos sistema_sihs (PostgreSQL / Supabase)
 --
--- Fuente: Backend/app/modules/*/model.py (usuarios, roles, usuario_rol,
--- password_reset_tokens) + MER SIHS.pdf + correcciones de AUDITORIA_TECNICA.md
--- (especialidades, programas con código único, y las FK de horarios que
--- faltaban para poder detectar cruces).
+-- Fuente: Backend/app/modules/*/model.py (usuarios, roles, usuario_rol) +
+-- MER SIHS.pdf + correcciones de AUDITORIA_TECNICA.md (especialidades,
+-- programas con código único, y las FK de horarios que faltaban para poder
+-- detectar cruces).
+--
+-- v2 (2026-08-23): se adopta Supabase Auth para autenticación en vez de un
+-- JWT/hash de contraseña propio. Por eso:
+--   * "usuarios" ya no guarda "password": Supabase Auth la administra.
+--   * "usuarios"."idUsuario" pasa de SERIAL a UUID y referencia
+--     auth.users(id) — Supabase Auth genera UUIDs, no enteros. Toda FK que
+--     apuntaba a usuarios se actualiza al mismo tipo.
+--   * "password_reset_tokens" se elimina: el flujo de recuperación por
+--     correo ya lo cubre Supabase Auth, no hay que reconstruirlo.
+--   * Este script asume que se ejecuta dentro de un proyecto Supabase (el
+--     esquema "auth" con la tabla auth.users ya existe ahí de forma nativa).
 --
 -- Las columnas están en camelCase y comilladas ("idUsuario") porque así las
 -- genera SQLAlchemy en Postgres. Si consultas a mano con psql, usa las
 -- comillas: SELECT "idUsuario" FROM usuarios;
 --
--- Uso:
---   psql -U postgres -h localhost -p 5432 -c "CREATE DATABASE sistema_sihs;"
---   psql -U postgres -h localhost -p 5432 -d sistema_sihs -f 01_creacion.sql
---   psql -U postgres -h localhost -p 5432 -d sistema_sihs -f 02_datos_prueba.sql
+-- Uso (Supabase — SQL Editor del proyecto, o psql contra el connection
+-- string que entregue la cuenta del proyecto):
+--   psql "<connection string de Supabase>" -f 01_creacion.sql
+--   psql "<connection string de Supabase>" -f 02_datos_prueba.sql
 
 -- =========================================================
 -- TIPOS ENUM
@@ -29,27 +40,21 @@ CREATE TABLE roles (
     "nombre" VARCHAR(50) UNIQUE NOT NULL
 );
 
+-- "usuarios" es la tabla de perfil (datos propios del dominio SIHS), no la
+-- de autenticación: la contraseña, el email de login y la recuperación de
+-- contraseña viven en auth.users, administradas por Supabase Auth.
 CREATE TABLE usuarios (
-    "idUsuario"     SERIAL PRIMARY KEY,
+    "idUsuario"     UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     "nombre"        VARCHAR(100) NOT NULL,
     "email"         VARCHAR(100) UNIQUE NOT NULL,
-    "password"      VARCHAR(255) NOT NULL,
     "estado"        estado_usuario DEFAULT 'activo',
     "fechaRegistro" TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE usuario_rol (
-    "idUsuario" INTEGER NOT NULL REFERENCES usuarios("idUsuario") ON DELETE CASCADE,
+    "idUsuario" UUID NOT NULL REFERENCES usuarios("idUsuario") ON DELETE CASCADE,
     "idRol"     INTEGER NOT NULL REFERENCES roles("idRol") ON DELETE CASCADE,
     PRIMARY KEY ("idUsuario", "idRol")
-);
-
-CREATE TABLE password_reset_tokens (
-    "id"              SERIAL PRIMARY KEY,
-    "token"           VARCHAR(255) UNIQUE NOT NULL,
-    "idUsuario"       INTEGER NOT NULL REFERENCES usuarios("idUsuario") ON DELETE CASCADE,
-    "usado"           BOOLEAN DEFAULT FALSE,
-    "fechaExpiracion" TIMESTAMP NOT NULL
 );
 
 -- =========================================================
@@ -64,7 +69,7 @@ CREATE TABLE especialidades (
 );
 
 CREATE TABLE usuario_especialidad (
-    "idUsuario"       INTEGER NOT NULL REFERENCES usuarios("idUsuario") ON DELETE CASCADE,
+    "idUsuario"       UUID NOT NULL REFERENCES usuarios("idUsuario") ON DELETE CASCADE,
     "idEspecialidad"  INTEGER NOT NULL REFERENCES especialidades("idEspecialidad") ON DELETE CASCADE,
     PRIMARY KEY ("idUsuario", "idEspecialidad")
 );
@@ -106,7 +111,7 @@ CREATE TABLE fichas (
 -- Relación ficha <-> usuario (aprendices matriculados y/o instructor líder)
 CREATE TABLE ficha_usuario (
     "idFicha"   INTEGER NOT NULL REFERENCES fichas("idFicha") ON DELETE CASCADE,
-    "idUsuario" INTEGER NOT NULL REFERENCES usuarios("idUsuario") ON DELETE CASCADE,
+    "idUsuario" UUID NOT NULL REFERENCES usuarios("idUsuario") ON DELETE CASCADE,
     PRIMARY KEY ("idFicha", "idUsuario")
 );
 
@@ -187,7 +192,7 @@ CREATE TABLE horarios (
     "idTrimestre"  INTEGER NOT NULL REFERENCES trimestres("idTrimestre"),
 
     "idAmbiente"   INTEGER NOT NULL REFERENCES ambientes("idAmbiente"),
-    "idInstructor" INTEGER NOT NULL REFERENCES usuarios("idUsuario"),
+    "idInstructor" UUID NOT NULL REFERENCES usuarios("idUsuario"),
     "idFicha"      INTEGER NOT NULL REFERENCES fichas("idFicha"),
     "idResultado"  INTEGER NOT NULL REFERENCES resultados_aprendizaje("idResultado"),
 
@@ -218,3 +223,13 @@ CREATE INDEX "idxHorarioTrimestre"  ON horarios ("idTrimestre");
 --         "idInstructor" WITH =,
 --         tsrange(("horaInicio")::text::timestamp, ("horaFin")::text::timestamp) WITH &&
 --     );
+
+-- =========================================================
+-- OPCIONAL — Row Level Security (Supabase).
+-- Con Supabase Auth activo, auth.uid() ya identifica al usuario autenticado
+-- dentro de cualquier política RLS. No se activa aquí (se define junto con
+-- el módulo de roles en la Fase 1), se deja documentado el patrón base:
+-- =========================================================
+-- ALTER TABLE horarios ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "instructor_ve_su_horario" ON horarios
+--     FOR SELECT USING ("idInstructor" = auth.uid());
