@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.supabase_auth import require_admin
+from app.core.supabase_auth import require_admin, require_lectura_catalogo
 from app.schemas.trimestre import TrimestreCreate, TrimestreResponse, TrimestreUpdate
 from app.services.trimestre_service import TrimestreService
 
@@ -21,7 +21,7 @@ def crear_trimestre(
 @router.get("/", response_model=list[TrimestreResponse])
 def obtener_trimestres(
     db: Session = Depends(get_db),
-    usuario=Depends(require_admin),
+    usuario=Depends(require_lectura_catalogo),
 ):
     return TrimestreService.obtener_todos(db)
 
@@ -30,7 +30,7 @@ def obtener_trimestres(
 def obtener_trimestre(
     id_trimestre: int,
     db: Session = Depends(get_db),
-    usuario=Depends(require_admin),
+    usuario=Depends(require_lectura_catalogo),
 ):
     trimestre = TrimestreService.obtener_por_id(db, id_trimestre)
 

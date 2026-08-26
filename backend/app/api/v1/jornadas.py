@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.supabase_auth import require_admin
+from app.core.supabase_auth import require_admin, require_lectura_catalogo
 from app.schemas.jornada import JornadaCreate, JornadaResponse, JornadaUpdate
 from app.services.jornada_service import JornadaService
 
@@ -21,7 +21,7 @@ def crear_jornada(
 @router.get("/", response_model=list[JornadaResponse])
 def obtener_jornadas(
     db: Session = Depends(get_db),
-    usuario=Depends(require_admin),
+    usuario=Depends(require_lectura_catalogo),
 ):
     return JornadaService.obtener_todos(db)
 
@@ -30,7 +30,7 @@ def obtener_jornadas(
 def obtener_jornada(
     id_jornada: int,
     db: Session = Depends(get_db),
-    usuario=Depends(require_admin),
+    usuario=Depends(require_lectura_catalogo),
 ):
     jornada = JornadaService.obtener_por_id(db, id_jornada)
 

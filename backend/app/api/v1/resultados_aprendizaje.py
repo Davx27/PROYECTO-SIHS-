@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.supabase_auth import require_admin
+from app.core.supabase_auth import require_admin, require_lectura_catalogo
 from app.schemas.resultado_aprendizaje import (
     ResultadoAprendizajeCreate,
     ResultadoAprendizajeResponse,
@@ -25,7 +25,7 @@ def crear_resultado(
 @router.get("/", response_model=list[ResultadoAprendizajeResponse])
 def obtener_resultados(
     db: Session = Depends(get_db),
-    usuario=Depends(require_admin),
+    usuario=Depends(require_lectura_catalogo),
 ):
     return ResultadoAprendizajeService.obtener_todos(db)
 
@@ -34,7 +34,7 @@ def obtener_resultados(
 def obtener_resultado(
     id_resultado: int,
     db: Session = Depends(get_db),
-    usuario=Depends(require_admin),
+    usuario=Depends(require_lectura_catalogo),
 ):
     resultado = ResultadoAprendizajeService.obtener_por_id(db, id_resultado)
 

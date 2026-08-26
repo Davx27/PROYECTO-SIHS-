@@ -27,6 +27,76 @@ export interface DiaSemana {
   nombreDia: string
 }
 
+export interface Trimestre {
+  idTrimestre: number
+  nombre: string
+  fechaInicio: string
+  fechaFin: string
+  estado: 'planeado' | 'activo' | 'finalizado'
+}
+
+export interface Ficha {
+  idFicha: number
+  codigoFicha: string
+  idPrograma: number
+  idTrimestre: number
+}
+
+export interface Ambiente {
+  idAmbiente: number
+  numeroAmbiente: number
+  nombreAmbiente: string
+  tipoAmbiente: 'regular' | 'especial'
+  estadoAmbiente: 'disponible' | 'mantenimiento' | 'inactivo'
+  idSede: number
+}
+
+export interface ResultadoAprendizaje {
+  idResultado: number
+  codigo: string | null
+  descripcion: string
+  idCompetencia: number
+  idGuia: number | null
+  horasAsignadas: number | null
+}
+
+// Espejo de HorarioResponse (backend/app/schemas/horario.py) — el módulo
+// real, con las 4 validaciones de cruce en el backend. Distinto de
+// HorarioGuardado (más abajo), que es el puente JSONB anterior.
+export interface Horario {
+  idHorario: number
+  horaInicio: string
+  horaFin: string
+  idJornada: number
+  idTrimestre: number
+  idAmbiente: number
+  idInstructor: string
+  idFicha: number
+  idResultado: number
+  dias: number[]
+  instructorNombre: string | null
+  fichaCodigo: string | null
+  ambienteNombre: string | null
+}
+
+export interface HorarioCreate {
+  horaInicio: string
+  horaFin: string
+  idJornada: number
+  idTrimestre: number
+  idAmbiente: number
+  idInstructor: string
+  idFicha: number
+  idResultado: number
+  dias: number[]
+}
+
+// Mensaje de error que devuelve POST/PUT /horarios cuando hay un cruce
+// (HTTP 409) — ver backend/app/services/horario_service.py CruceHorarioError.
+export interface ErrorCruceHorario {
+  mensajes: string[]
+}
+
 // Espejo de HorarioGuardadoResponse (backend/app/schemas/horario_guardado.py).
 // "Guardado" a propósito, no "Horario": esto es lo que arma el editor
 // (frontend/src/pages/NuevoHorario.tsx) con ficha/instructor/ambiente como

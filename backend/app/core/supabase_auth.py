@@ -102,3 +102,8 @@ require_admin = require_role("Administrador")
 require_coordinador = require_role("Coordinador")
 require_instructor = require_role("Instructor")
 require_aprendiz = require_role("Aprendiz")
+
+# Lectura de catálogos que un Coordinador necesita para armar un horario
+# (fichas, ambientes, instructores, resultados, jornadas, días, trimestres)
+# — la escritura de esos catálogos sigue siendo solo de Administrador.
+require_lectura_catalogo = require_roles("Coordinador", "Administrador")

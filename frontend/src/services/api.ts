@@ -4,10 +4,14 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8001/api/v1'
 
 export class ApiError extends Error {
   status: number
+  /** El campo "detail" crudo de FastAPI — a veces es un string, a veces un
+   * objeto (ej. `{ mensajes: string[] }` en los 409 de cruce de horarios). */
+  detail: unknown
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, detail?: unknown) {
     super(message)
     this.status = status
+    this.detail = detail
   }
 }
 
@@ -37,7 +41,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const body = await response.json().catch(() => null)
-    throw new ApiError(response.status, body?.detail ?? response.statusText)
+    const detail = body?.detail
+    const mensaje = typeof detail === 'string' ? detail : response.statusText
+    throw new ApiError(response.status, mensaje, detail)
   }
 
   if (response.status === 204) {

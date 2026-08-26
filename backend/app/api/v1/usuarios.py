@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.supabase_auth import get_current_user, require_admin
+from app.core.supabase_auth import get_current_user, require_admin, require_lectura_catalogo
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioResponse
 from app.services.usuario_service import UsuarioService
@@ -22,7 +22,7 @@ def obtener_mi_perfil(usuario: Usuario = Depends(get_current_user)):
 @router.get("/", response_model=list[UsuarioResponse])
 def listar_usuarios(
     db: Session = Depends(get_db),
-    usuario=Depends(require_admin),
+    usuario=Depends(require_lectura_catalogo),
 ):
     return UsuarioService.listar_usuarios(db)
 

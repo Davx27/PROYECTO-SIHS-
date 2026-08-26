@@ -4,6 +4,7 @@ import type { BloqueClase, GridAsignaciones } from '../../pages/horario/tipos'
 import { PanelBloques } from './PanelBloques'
 import { GridHorario } from './GridHorario'
 import { ModalBloque } from './ModalBloque'
+import type { CatalogosBloque } from './ModalBloque'
 
 interface HorarioEditorProps {
   bloquesIniciales: BloqueClase[]
@@ -11,6 +12,10 @@ interface HorarioEditorProps {
   /** Avisa al padre cada vez que cambian bloques/grid — así `NuevoHorario.tsx`
    * puede guardar el estado actual sin tener que ser dueño de `useHorarioState`. */
   onCambiarEstado?: (estado: { bloques: BloqueClase[]; grid: GridAsignaciones }) => void
+  /** Si viene, el modal de bloques usa selects contra catálogos reales en
+   * vez de texto libre — ver `ModalBloque.tsx`. `NuevoHorario.tsx` lo pasa;
+   * el demo/tests de este componente no. */
+  catalogos?: CatalogosBloque
 }
 
 /**
@@ -21,7 +26,7 @@ interface HorarioEditorProps {
  * lo monta dentro del layout de la app junto con los campos de
  * ficha/fechas/sedes.
  */
-export function HorarioEditor({ bloquesIniciales, gridInicial, onCambiarEstado }: HorarioEditorProps) {
+export function HorarioEditor({ bloquesIniciales, gridInicial, onCambiarEstado, catalogos }: HorarioEditorProps) {
   const estado = useHorarioState({ bloques: bloquesIniciales, grid: gridInicial })
   const { modal } = estado
   const bloqueEnEdicion =
@@ -73,6 +78,7 @@ export function HorarioEditor({ bloquesIniciales, gridInicial, onCambiarEstado }
       {modal && (
         <ModalBloque
           bloqueInicial={bloqueEnEdicion}
+          catalogos={catalogos}
           onGuardar={estado.guardarDesdeModal}
           onCancelar={estado.cerrarModal}
         />

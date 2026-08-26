@@ -1,55 +1,23 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { ExportarPdfButton } from '../components/ExportarPdfButton'
 import { HorarioEditor } from '../components/horario/HorarioEditor'
-import { apiPost, ApiError } from '../services/api'
+import type { CatalogosBloque } from '../components/horario/ModalBloque'
+import { apiGet, apiPost, ApiError } from '../services/api'
 import { BLOQUES, DIAS } from './horario/tipos'
-import type { BloqueClase, GridAsignaciones } from './horario/tipos'
-
-const FICHA_EJEMPLO = '3_TRM_3228973B_(M)_ANALISIS Y DESARROLLO DE SOFTWARE.'
-
-/**
- * Datos de ejemplo tomados de la plantilla institucional real
- * (_Docs/Diseño/plantillas-institucionales/disponibilidad-ficha-3228973B.pdf)
- * — ficha 3228973 B, trimestre 3 de 2026. Son solo el punto de partida: cada
- * bloque de clase es editable y reutilizable (ver "Bloques de clase" en
- * `HorarioEditor`). "Guardar horario" persiste esto en `horarios_guardados`
- * (ver `backend/app/api/v1/horarios_guardados.py`) — es una tabla puente en
- * JSONB, NO el módulo `horarios` relacional real (con detección de cruces)
- * que sigue sin existir en el backend; ver
- * `_Docs/Documentación general/SECCION_ESTUDIANTES.md` para el porqué.
- */
-function datosIniciales(): { bloques: BloqueClase[]; grid: GridAsignaciones } {
-  const bloques: BloqueClase[] = [
-    { id: 'seed-comunicacion', tematica: 'Comunicación', instructor: 'Claudia Pinzón', ficha: FICHA_EJEMPLO, ambiente: '607_Torre 1_Unigermana' },
-    { id: 'seed-investigacion', tematica: 'Investigación', instructor: 'Claudia Pinzón', ficha: FICHA_EJEMPLO, ambiente: '607_Torre 1_Unigermana' },
-    { id: 'seed-593103', tematica: '593103 - 01 Elaborar los artefactos de diseño del software siguiendo las prácticas de la metodología seleccionada.', instructor: 'Sergio Garzón', ficha: FICHA_EJEMPLO, ambiente: '412 Av.Caracas_con_52' },
-    { id: 'seed-592375', tematica: '592375 - 01 Planear actividades de análisis de acuerdo con la metodología seleccionada.', instructor: 'Erick Granados', ficha: FICHA_EJEMPLO, ambiente: '412 Av.Caracas_con_52' },
-    { id: 'seed-593107', tematica: '593107 - 02 Construir la base de datos para el software a partir del modelo de datos.', instructor: 'Fredy Ardila', ficha: FICHA_EJEMPLO, ambiente: '412 Av.Caracas_con_52' },
-    { id: 'seed-593102', tematica: '593102 - 04 Verificar los entregables de la fase de diseño del software de acuerdo con lo establecido en el informe de análisis.', instructor: 'Erick Granados', ficha: FICHA_EJEMPLO, ambiente: '211 Av.Caracas_con_52' },
-    { id: 'seed-sst', tematica: 'Medio Ambiente y SST', instructor: 'Vanessa Gualaco', ficha: FICHA_EJEMPLO, ambiente: '601_Torre 1_Unigermana' },
-  ]
-
-  const grid: GridAsignaciones = BLOQUES.map(() => DIAS.map(() => null))
-
-  // Bloque horario 0 = Mañana 6:15-9:00, día 4 = Viernes
-  grid[0][4] = 'seed-comunicacion'
-  // Bloque horario 1 = Mañana 9:00-12:00, día 4 = Viernes
-  grid[1][4] = 'seed-investigacion'
-
-  // Bloques horario 4 y 5 = Noche (6-8pm y 8-10pm), días 0-4 = Lunes a Viernes,
-  // mismo bloque de clase en ambos tramos porque la jornada nocturna dicta un
-  // solo tema en sesión de 4 horas.
-  const nocheLunesAViernes = ['seed-593103', 'seed-592375', 'seed-593107', 'seed-593102', 'seed-sst']
-  nocheLunesAViernes.forEach((bloqueId, diaIdx) => {
-    grid[4][diaIdx] = bloqueId
-    grid[5][diaIdx] = bloqueId
-  })
-
-  return { bloques, grid }
-}
+import type { BloqueClase, GridAsignaciones, Jornada as JornadaGrid } from './horario/tipos'
+import { gridVacio } from './horario/useHorarioState'
+import type {
+  Ambiente,
+  DiaSemana,
+  Ficha,
+  HorarioCreate,
+  Jornada,
+  ResultadoAprendizaje,
+  Usuario,
+} from '../types/api'
 
 const SEDES = [
   { nombre: 'Sede principal', direccion: 'Calle 52 # 13 -65' },
@@ -57,45 +25,167 @@ const SEDES = [
   { nombre: 'Sede Fontibón', direccion: 'Cl 19A # 96c - 40' },
 ]
 
+interface Catalogos extends CatalogosBloque {
+  jornadaIdPorNombre: Record<JornadaGrid, number>
+  diaIdPorNombre: Record<string, number>
+}
+
+interface GrupoCelda {
+  bloqueIdx: number
+  bloqueId: string
+  diasIdx: number[]
+}
+
+/** Agrupa el grid por (bloque de clase, bloque horario) — cada grupo se
+ * traduce en un POST /horarios con la lista de días donde aparece. */
+function agruparCeldas(grid: GridAsignaciones): GrupoCelda[] {
+  const grupos = new Map<string, GrupoCelda>()
+
+  grid.forEach((fila, bloqueIdx) => {
+    fila.forEach((bloqueId, diaIdx) => {
+      if (!bloqueId) return
+      const clave = `${bloqueIdx}-${bloqueId}`
+      const existente = grupos.get(clave)
+      if (existente) {
+        existente.diasIdx.push(diaIdx)
+      } else {
+        grupos.set(clave, { bloqueIdx, bloqueId, diasIdx: [diaIdx] })
+      }
+    })
+  })
+
+  return [...grupos.values()]
+}
+
 export function NuevoHorario() {
-  const navigate = useNavigate()
-  const [ficha, setFicha] = useState('3228973 B')
+  const [ficha, setFicha] = useState('')
   const [aprendices, setAprendices] = useState('0')
   const [horasTrimestre, setHorasTrimestre] = useState('36')
-  const [fechaInicio, setFechaInicio] = useState('2026-01-29')
-  const [fechaFin, setFechaFin] = useState('2026-04-14')
+  const [fechaInicio, setFechaInicio] = useState('')
+  const [fechaFin, setFechaFin] = useState('')
   const [guardando, setGuardando] = useState(false)
-  const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
+  const [erroresGuardar, setErroresGuardar] = useState<string[]>([])
+  const [mensajeExito, setMensajeExito] = useState<string | null>(null)
 
-  // Solo se usa para inicializar HorarioEditor una vez — el estado real del
-  // grid vive dentro de HorarioEditor/useHorarioState. `estadoActualRef` lo
-  // recibe en vivo vía `onCambiarEstado` para poder leerlo al guardar sin
-  // provocar un re-render en cada clic dentro del editor.
-  const [{ bloques, grid }] = useState(datosIniciales)
+  const [catalogos, setCatalogos] = useState<Catalogos | null>(null)
+  const [errorCatalogos, setErrorCatalogos] = useState<string | null>(null)
+
+  // El grid arranca vacío — a diferencia de la versión anterior (con datos
+  // ficticios), ahora cada bloque de clase se elige de catálogos reales
+  // (ver ModalBloque), así que no hay nada de ejemplo que mostrar hasta que
+  // el coordinador arme el horario.
+  const [{ bloques, grid }] = useState(() => ({ bloques: [] as BloqueClase[], grid: gridVacio() }))
   const estadoActualRef = useRef<{ bloques: BloqueClase[]; grid: GridAsignaciones }>({ bloques, grid })
   const capturarEstadoActual = useCallback((estado: { bloques: BloqueClase[]; grid: GridAsignaciones }) => {
     estadoActualRef.current = estado
   }, [])
 
+  useEffect(() => {
+    Promise.all([
+      apiGet<Ficha[]>('/fichas/'),
+      apiGet<Ambiente[]>('/ambientes'),
+      apiGet<Usuario[]>('/usuarios/'),
+      apiGet<ResultadoAprendizaje[]>('/resultados-aprendizaje/'),
+      apiGet<Jornada[]>('/jornadas/'),
+      apiGet<DiaSemana[]>('/dias-semana/'),
+    ])
+      .then(([fichas, ambientes, instructores, resultados, jornadas, dias]) => {
+        const jornadaIdPorNombre = Object.fromEntries(
+          jornadas.map((j) => [j.nombreJornada, j.idJornada]),
+        ) as Record<JornadaGrid, number>
+        const diaIdPorNombre = Object.fromEntries(dias.map((d) => [d.nombreDia, d.idDia]))
+
+        setCatalogos({ fichas, ambientes, instructores, resultados, jornadaIdPorNombre, diaIdPorNombre })
+      })
+      .catch((err: unknown) => {
+        setErrorCatalogos(
+          err instanceof ApiError
+            ? err.message
+            : 'No se pudieron cargar los catálogos (fichas, ambientes, instructores, resultados).',
+        )
+      })
+  }, [])
+
   async function guardarHorario() {
+    if (!catalogos) return
+
     setGuardando(true)
-    setErrorGuardar(null)
+    setErroresGuardar([])
+    setMensajeExito(null)
+
+    const { bloques: bloquesActuales, grid: gridActual } = estadoActualRef.current
+    const grupos = agruparCeldas(gridActual)
+    const errores: string[] = []
+    let creados = 0
+
+    for (const grupo of grupos) {
+      const bloque = bloquesActuales.find((b) => b.id === grupo.bloqueId)
+      const bloqueHorario = BLOQUES[grupo.bloqueIdx]
+
+      if (
+        !bloque ||
+        bloque.idResultado === undefined ||
+        bloque.idInstructor === undefined ||
+        bloque.idFicha === undefined ||
+        bloque.idTrimestre === undefined ||
+        bloque.idAmbiente === undefined
+      ) {
+        errores.push(`"${bloque?.tematica ?? 'una celda'}" no tiene todos los datos — vuelve a editarla.`)
+        continue
+      }
+
+      const datos: HorarioCreate = {
+        horaInicio: bloqueHorario.horaInicio24,
+        horaFin: bloqueHorario.horaFin24,
+        idJornada: catalogos.jornadaIdPorNombre[bloqueHorario.jornada],
+        idTrimestre: bloque.idTrimestre,
+        idAmbiente: bloque.idAmbiente,
+        idInstructor: bloque.idInstructor,
+        idFicha: bloque.idFicha,
+        idResultado: bloque.idResultado,
+        dias: grupo.diasIdx.map((diaIdx) => catalogos.diaIdPorNombre[DIAS[diaIdx]]),
+      }
+
+      try {
+        await apiPost('/horarios/', datos)
+        creados += 1
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 409) {
+          const detalle = err.detail as { mensajes?: string[] } | null
+          const mensajes = detalle?.mensajes ?? [err.message]
+          errores.push(`${bloque.tematica} (${DIAS[grupo.diasIdx[0]]} ${bloqueHorario.horaInicio}): ${mensajes.join(' ')}`)
+        } else {
+          errores.push(`${bloque.tematica}: ${err instanceof ApiError ? err.message : 'error al guardar'}`)
+        }
+      }
+    }
+
+    if (errores.length > 0) {
+      setErroresGuardar(errores)
+      setGuardando(false)
+      return
+    }
+
+    // Sin cruces: además de las filas reales en `horarios`, se guarda un
+    // snapshot en `horarios_guardados` para el Historial/exportar a PDF —
+    // ver PLAN_INTEGRACION_LOGICA_Y_BD.md §5 (migración pendiente).
     try {
-      await apiPost('/horarios-guardados', {
+      await apiPost('/horarios-guardados/', {
         ficha,
         aprendices,
         horasTrimestre,
         fechaInicio,
         fechaFin,
-        bloques: estadoActualRef.current.bloques,
-        grid: estadoActualRef.current.grid,
+        bloques: bloquesActuales,
+        grid: gridActual,
       })
-      navigate('/horarios/historial')
-    } catch (err) {
-      setErrorGuardar(err instanceof ApiError ? err.message : 'No se pudo guardar el horario.')
-    } finally {
-      setGuardando(false)
+    } catch {
+      // El snapshot es de apoyo (historial/PDF) — si falla, las clases
+      // reales ya quedaron creadas, así que no se trata como error fatal.
     }
+
+    setMensajeExito(`${creados} clase${creados === 1 ? '' : 's'} guardada${creados === 1 ? '' : 's'} sin cruces.`)
+    setGuardando(false)
   }
 
   return (
@@ -104,8 +194,9 @@ export function NuevoHorario() {
         <div>
           <h1 className="mb-1 text-2xl font-bold text-slate-900">Nuevo horario</h1>
           <p className="text-sm text-slate-500">
-            Define un bloque de clase una sola vez y reutilízalo en el grid — no hace falta
-            volver a escribir instructor/ficha/ambiente en cada celda.
+            Define un bloque de clase eligiendo de los catálogos reales y reutilízalo en el grid —
+            al guardar, el sistema revisa cruces de ficha, instructor, ambiente y resultado
+            repetido antes de crear cada clase.
           </p>
         </div>
 
@@ -120,7 +211,8 @@ export function NuevoHorario() {
           <button
             type="button"
             onClick={() => void guardarHorario()}
-            disabled={guardando}
+            disabled={guardando || !catalogos}
+            title={!catalogos ? 'Cargando catálogos…' : undefined}
             className="rounded-lg bg-sena-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sena-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {guardando ? 'Guardando…' : 'Guardar horario'}
@@ -128,17 +220,35 @@ export function NuevoHorario() {
         </div>
       </div>
 
-      {errorGuardar && (
+      {errorCatalogos && (
         <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">
-          {errorGuardar}
+          {errorCatalogos}
+        </p>
+      )}
+
+      {erroresGuardar.length > 0 && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">
+          <p className="mb-1 font-semibold">No se pudo guardar — el sistema encontró cruces:</p>
+          <ul className="list-disc space-y-0.5 pl-5">
+            {erroresGuardar.map((e) => (
+              <li key={e}>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {mensajeExito && (
+        <p className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 print:hidden">
+          {mensajeExito}
         </p>
       )}
 
       <div className="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-4">
-        <Campo etiqueta="Ficha">
+        <Campo etiqueta="Ficha (referencia del formulario)">
           <input
             value={ficha}
             onChange={(e) => setFicha(e.target.value)}
+            placeholder="Ej. 3228973 B"
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
           />
         </Campo>
@@ -175,7 +285,16 @@ export function NuevoHorario() {
       </div>
 
       <div className="mb-6">
-        <HorarioEditor bloquesIniciales={bloques} gridInicial={grid} onCambiarEstado={capturarEstadoActual} />
+        {catalogos ? (
+          <HorarioEditor
+            bloquesIniciales={bloques}
+            gridInicial={grid}
+            onCambiarEstado={capturarEstadoActual}
+            catalogos={catalogos}
+          />
+        ) : (
+          !errorCatalogos && <p className="text-sm text-slate-500">Cargando catálogos…</p>
+        )}
       </div>
 
       <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
