@@ -6,6 +6,9 @@ import { RestablecerContrasena } from '../pages/RestablecerContrasena'
 import { Dashboard } from '../pages/Dashboard'
 import { NuevoHorario } from '../pages/NuevoHorario'
 import { HistorialHorarios } from '../pages/HistorialHorarios'
+import { Ambientes } from '../pages/Ambientes'
+import { Instructores } from '../pages/Instructores'
+import { Fichas } from '../pages/Fichas'
 import { ProtectedRoute } from './ProtectedRoute'
 
 /**
@@ -43,6 +46,30 @@ export function AppRouter() {
         element={
           <ProtectedRoute>
             <HistorialHorarios />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ambientes"
+        element={
+          <ProtectedRoute>
+            <Ambientes />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/instructores"
+        element={
+          <ProtectedRoute>
+            <Instructores />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/fichas"
+        element={
+          <ProtectedRoute>
+            <Fichas />
           </ProtectedRoute>
         }
       />
