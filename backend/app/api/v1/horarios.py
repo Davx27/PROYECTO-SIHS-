@@ -29,6 +29,8 @@ def _a_response(db: Session, horario) -> dict:
         "instructorNombre": horario.instructor.nombre if horario.instructor else None,
         "fichaCodigo": horario.ficha.codigoFicha if horario.ficha else None,
         "ambienteNombre": horario.ambiente.nombre if horario.ambiente else None,
+        "resultadoCodigo": horario.resultado.codigo if horario.resultado else None,
+        "resultadoDescripcion": horario.resultado.descripcion if horario.resultado else None,
     }
 
 

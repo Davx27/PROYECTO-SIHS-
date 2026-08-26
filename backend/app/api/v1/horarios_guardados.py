@@ -43,3 +43,17 @@ def obtener_horario_guardado(
         raise HTTPException(status_code=404, detail="Horario guardado no encontrado")
 
     return _con_creador(horario_guardado)
+
+
+@router.delete("/{id_horario_guardado}")
+def eliminar_horario_guardado(
+    id_horario_guardado: int,
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
+    eliminado = HorarioGuardadoService.eliminar(db, id_horario_guardado)
+
+    if not eliminado:
+        raise HTTPException(status_code=404, detail="Horario guardado no encontrado")
+
+    return {"mensaje": "Horario guardado eliminado"}

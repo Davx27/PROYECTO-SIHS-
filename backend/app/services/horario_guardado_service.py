@@ -26,3 +26,13 @@ class HorarioGuardadoService:
         creado = HorarioGuardadoRepository.crear(db, nuevo)
         creado.usuario = usuario
         return creado
+
+    @staticmethod
+    def eliminar(db, id_horario_guardado):
+        horario_guardado = HorarioGuardadoRepository.obtener_por_id(db, id_horario_guardado)
+
+        if not horario_guardado:
+            return False
+
+        HorarioGuardadoRepository.eliminar(db, horario_guardado)
+        return True

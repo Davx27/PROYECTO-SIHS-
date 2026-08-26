@@ -1,4 +1,5 @@
 from app.models.horario import Horario
+from app.models.dia_semana import DiaSemana
 from app.repositories.horario_repository import HorarioRepository
 
 
@@ -74,28 +75,61 @@ class HorarioService:
 
     @staticmethod
     def _detectar_cruces(db, data, excluir_id: int | None = None) -> list[str]:
-        """Los 4 tipos de cruce confirmados entre las dos entrevistas a
-        coordinadores (Teleinformática y Logística) — ver
-        REGLAS_DE_NEGOCIO_CONOCIDAS.md. Se chequean del más barato al más
-        caro: existencia primero, solapes de horas después."""
+        """Cruces por solape de horario: misma ficha, mismo instructor o
+        mismo ambiente ya ocupados en ese día/hora — ver
+        REGLAS_DE_NEGOCIO_CONOCIDAS.md. (Antes existía un cuarto chequeo que
+        bloqueaba repetir un resultado en la misma ficha sin importar el
+        horario; se quitó porque un resultado normalmente se dicta en
+        varios bloques — antes/después del descanso, distintos días — no
+        una sola vez.) Cada mensaje dice CONTRA QUÉ horario existente choca
+        (día, hora, y quién/qué ya lo tiene) — no solo la regla que se
+        violó, para que se entienda de un vistazo sin tener que ir a
+        buscarlo a mano."""
         errores: list[str] = []
 
-        if HorarioRepository.existe_resultado_en_ficha(db, data.idFicha, data.idResultado, excluir_id):
-            errores.append("Ese resultado de aprendizaje ya está programado para esta ficha.")
-
-        if HorarioRepository.existe_solape(
+        ficha_existente = HorarioRepository.buscar_solape(
             db, "idFicha", data.idFicha, data.dias, data.horaInicio, data.horaFin, excluir_id
-        ):
-            errores.append("La ficha ya tiene otra clase programada en ese horario.")
+        )
+        if ficha_existente:
+            errores.append(
+                "La ficha ya tiene otra clase programada en ese horario: "
+                f"{HorarioService._describir(db, ficha_existente)}."
+            )
 
-        if HorarioRepository.existe_solape(
+        instructor_existente = HorarioRepository.buscar_solape(
             db, "idInstructor", data.idInstructor, data.dias, data.horaInicio, data.horaFin, excluir_id
-        ):
-            errores.append("El instructor ya tiene otra clase programada en ese horario.")
+        )
+        if instructor_existente:
+            errores.append(
+                "El instructor ya tiene otra clase programada en ese horario: "
+                f"{HorarioService._describir(db, instructor_existente)}."
+            )
 
-        if HorarioRepository.existe_solape(
+        ambiente_existente = HorarioRepository.buscar_solape(
             db, "idAmbiente", data.idAmbiente, data.dias, data.horaInicio, data.horaFin, excluir_id
-        ):
-            errores.append("El ambiente ya está ocupado en ese horario.")
+        )
+        if ambiente_existente:
+            errores.append(
+                "El ambiente ya está ocupado en ese horario: "
+                f"{HorarioService._describir(db, ambiente_existente)}."
+            )
 
         return errores
+
+    @staticmethod
+    def _describir(db, horario: Horario) -> str:
+        """'Lunes y Miércoles 07:00-09:00 · Carlos Lopez · ficha 2874521 ·
+        Ambiente 1' — arma la descripción legible de un horario existente,
+        para explicar un cruce con detalle en vez de solo nombrar la regla."""
+        ids_dias = HorarioRepository.obtener_dias(db, horario.idHorario)
+        dias = db.query(DiaSemana).filter(DiaSemana.idDia.in_(ids_dias)).order_by(DiaSemana.idDia).all()
+        nombres_dias = " y ".join(d.nombreDia for d in dias) if dias else "días sin especificar"
+
+        instructor = horario.instructor.nombre if horario.instructor else "instructor desconocido"
+        ficha = horario.ficha.codigoFicha if horario.ficha else "ficha desconocida"
+        ambiente = horario.ambiente.nombre if horario.ambiente else "ambiente desconocido"
+
+        return (
+            f"{nombres_dias} {horario.horaInicio.strftime('%H:%M')}-{horario.horaFin.strftime('%H:%M')}, "
+            f"instructor {instructor}, ficha {ficha}, {ambiente}"
+        )

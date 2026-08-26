@@ -77,6 +77,8 @@ export interface Horario {
   instructorNombre: string | null
   fichaCodigo: string | null
   ambienteNombre: string | null
+  resultadoCodigo: string | null
+  resultadoDescripcion: string | null
 }
 
 export interface HorarioCreate {

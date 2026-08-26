@@ -36,3 +36,5 @@ class HorarioResponse(HorarioBase):
     instructorNombre: str | None = None
     fichaCodigo: str | None = None
     ambienteNombre: str | None = None
+    resultadoCodigo: str | None = None
+    resultadoDescripcion: str | None = None

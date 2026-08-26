@@ -45,7 +45,7 @@ class HorarioRepository:
         db.commit()
 
     @staticmethod
-    def existe_solape(
+    def buscar_solape(
         db: Session,
         campo: str,
         valor,
@@ -53,10 +53,12 @@ class HorarioRepository:
         hora_inicio,
         hora_fin,
         excluir_id: int | None = None,
-    ) -> bool:
+    ) -> Horario | None:
         """Mismo `campo` (idFicha/idInstructor/idAmbiente), rango de horas
         que se solapa, y al menos un día en común — ver la consulta de
-        ejemplo en database/02_datos_prueba.sql."""
+        ejemplo en database/02_datos_prueba.sql. Devuelve el horario
+        existente con el que choca (o None) para poder explicar el cruce
+        con detalle, no solo confirmar que existe."""
         query = (
             db.query(Horario)
             .join(horario_dia, horario_dia.c.idHorario == Horario.idHorario)
@@ -69,17 +71,18 @@ class HorarioRepository:
         )
         if excluir_id is not None:
             query = query.filter(Horario.idHorario != excluir_id)
-        return db.query(query.exists()).scalar()
+        return query.first()
 
     @staticmethod
-    def existe_resultado_en_ficha(
+    def buscar_resultado_en_ficha(
         db: Session,
         id_ficha: int,
         id_resultado: int,
         excluir_id: int | None = None,
-    ) -> bool:
-        """Cruce de contenido, no de horas — ver REGLAS_DE_NEGOCIO_CONOCIDAS.md."""
+    ) -> Horario | None:
+        """Cruce de contenido, no de horas — ver REGLAS_DE_NEGOCIO_CONOCIDAS.md.
+        Devuelve el horario existente que ya cubre ese resultado, o None."""
         query = db.query(Horario).filter(Horario.idFicha == id_ficha, Horario.idResultado == id_resultado)
         if excluir_id is not None:
             query = query.filter(Horario.idHorario != excluir_id)
-        return db.query(query.exists()).scalar()
+        return query.first()

@@ -28,3 +28,8 @@ class HorarioGuardadoRepository:
         db.commit()
         db.refresh(horario_guardado)
         return horario_guardado
+
+    @staticmethod
+    def eliminar(db: Session, horario_guardado: HorarioGuardado):
+        db.delete(horario_guardado)
+        db.commit()

@@ -174,20 +174,28 @@ export function NuevoHorario() {
     if (creados > 0) {
       // Snapshot en `horarios_guardados` solo con lo que sí quedó creado de
       // verdad — para el Historial/exportar a PDF (ver
-      // PLAN_INTEGRACION_LOGICA_Y_BD.md §5, migración pendiente).
+      // PLAN_INTEGRACION_LOGICA_Y_BD.md §5, migración pendiente). El
+      // schema espera fecha válida o null — nunca "" (Pydantic rechaza un
+      // string vacío como date con 422).
       try {
         await apiPost('/horarios-guardados/', {
           ficha,
           aprendices,
           horasTrimestre,
-          fechaInicio,
-          fechaFin,
+          fechaInicio: fechaInicio || null,
+          fechaFin: fechaFin || null,
           bloques: bloquesActuales.filter((b) => idsBloquesExitosos.has(b.id)),
           grid: gridExitoso,
         })
-      } catch {
-        // El snapshot es de apoyo — si falla, las clases reales ya
-        // quedaron creadas, así que no se trata como error fatal.
+      } catch (err) {
+        // Las clases reales ya quedaron creadas — esto solo afecta al
+        // snapshot de Historial/PDF, pero se avisa en vez de tragarlo en
+        // silencio (así se descubrió el bug de fechas vacías → 422).
+        errores.push(
+          `Las clases se guardaron, pero no se pudo actualizar el Historial: ${
+            err instanceof ApiError ? err.message : 'error desconocido'
+          }`,
+        )
       }
       setMensajeExito(`${creados} clase${creados === 1 ? '' : 's'} guardada${creados === 1 ? '' : 's'} sin cruces.`)
     }
