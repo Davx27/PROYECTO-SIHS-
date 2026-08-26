@@ -37,13 +37,19 @@ export function useHorarioState(inicial: { bloques: BloqueClase[]; grid: GridAsi
   const bloqueActivo = bloques.find((b) => b.id === bloqueActivoId) ?? null
 
   function activarBloque(id: string) {
+    // OJO: a propósito NO se resetea `ultimaCeldaClic` acá. Si se resetea,
+    // el primer Shift+clic después de activar un bloque desde el panel no
+    // tiene ancla (`ultimaCeldaClic` es null) y cae al camino de "una sola
+    // celda" — se siente como que "Shift+clic no llena el rango". Dejar la
+    // última celda tocada como ancla, sea cual sea el bloque que estaba
+    // activo entonces, hace que un Shift+clic funcione siempre que ya se
+    // haya hecho al menos un clic antes en la sesión — igual que Excel/
+    // Sheets recuerdan la última celda activa.
     setBloqueActivoId((anterior) => (anterior === id ? null : id))
-    setUltimaCeldaClic(null)
   }
 
   function desactivarBloque() {
     setBloqueActivoId(null)
-    setUltimaCeldaClic(null)
   }
 
   function manejarClicCelda(posicion: PosicionCelda, shiftKey: boolean) {

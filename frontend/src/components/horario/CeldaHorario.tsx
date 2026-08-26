@@ -45,7 +45,7 @@ export function CeldaHorario({
         type="button"
         onClick={manejarClic}
         aria-label={hayBloqueActivo ? `Asignar bloque activo a ${etiqueta}` : `${etiqueta}, vacía`}
-        className={`flex h-full min-h-16 w-full flex-col items-center justify-center gap-1 border border-dashed border-transparent px-2 py-2 text-[11px] text-slate-400 transition ${fondoVacio} ${
+        className={`flex h-full min-h-16 w-full select-none flex-col items-center justify-center gap-1 border border-dashed border-transparent px-2 py-2 text-[11px] text-slate-400 transition ${fondoVacio} ${
           hayBloqueActivo ? 'cursor-pointer hover:border-slate-400 hover:text-slate-500' : 'cursor-default'
         }`}
       >
@@ -77,7 +77,7 @@ export function CeldaHorario({
         onClick={manejarClic}
         aria-label={`${etiqueta}: ${bloque.tematica}`}
         title={`${bloque.tematica} · ${bloque.instructor} · ${bloque.ambiente}`}
-        className={`block h-full w-full space-y-0.5 border-l-2 px-2 py-1.5 text-left text-[11px] leading-tight ${color.borde} ${color.texto}`}
+        className={`block h-full w-full select-none space-y-0.5 border-l-2 px-2 py-1.5 text-left text-[11px] leading-tight ${color.borde} ${color.texto}`}
       >
         <p className="truncate font-semibold">{bloque.tematica}</p>
         <p className="truncate">{bloque.instructor}</p>

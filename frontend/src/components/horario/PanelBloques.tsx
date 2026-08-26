@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { BloqueClase } from '../../pages/horario/tipos'
 import { colorParaBloque } from '../../pages/horario/gridLogic'
 
@@ -25,6 +26,11 @@ export function PanelBloques({
   onEditar,
   onEliminar,
 }: PanelBloquesProps) {
+  // Confirmación en línea antes de eliminar (no window.confirm — así queda
+  // consistente con el resto de la UI y se puede testear como cualquier
+  // otro botón). Solo un bloque a la vez puede estar "pidiendo confirmar".
+  const [confirmandoId, setConfirmandoId] = useState<string | null>(null)
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -50,6 +56,7 @@ export function PanelBloques({
           {bloques.map((bloque) => {
             const color = colorParaBloque(bloque.id)
             const activo = bloque.id === bloqueActivoId
+            const confirmando = confirmandoId === bloque.id
 
             return (
               <li key={bloque.id}>
@@ -58,41 +65,72 @@ export function PanelBloques({
                     activo ? 'border-sena-600 ring-1 ring-sena-600' : 'border-slate-200'
                   }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => onActivar(bloque.id)}
-                    aria-pressed={activo}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                  >
-                    <span className={`h-3 w-3 shrink-0 rounded-full ${color.fondo} border ${color.borde}`} />
-                    <span className="min-w-0">
-                      <span className="block truncate text-xs font-semibold text-slate-800">
-                        {bloque.tematica}
+                  {confirmando ? (
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-xs text-slate-600">
+                        ¿Eliminar <strong className="text-slate-800">{bloque.tematica}</strong>?
                       </span>
-                      <span className="block truncate text-[11px] text-slate-500">
-                        {bloque.instructor}
-                      </span>
-                    </span>
-                  </button>
+                      <div className="flex shrink-0 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onEliminar(bloque.id)
+                            setConfirmandoId(null)
+                          }}
+                          aria-label={`Confirmar eliminar ${bloque.tematica}`}
+                          className="rounded bg-red-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-red-700"
+                        >
+                          Sí, eliminar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmandoId(null)}
+                          aria-label={`Cancelar eliminar ${bloque.tematica}`}
+                          className="rounded border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onActivar(bloque.id)}
+                        aria-pressed={activo}
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      >
+                        <span className={`h-3 w-3 shrink-0 rounded-full ${color.fondo} border ${color.borde}`} />
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-semibold text-slate-800">
+                            {bloque.tematica}
+                          </span>
+                          <span className="block truncate text-[11px] text-slate-500">
+                            {bloque.instructor}
+                          </span>
+                        </span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => onEditar(bloque.id)}
-                    aria-label={`Editar ${bloque.tematica}`}
-                    title="Editar"
-                    className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                  >
-                    ✎
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onEliminar(bloque.id)}
-                    aria-label={`Eliminar ${bloque.tematica}`}
-                    title="Eliminar"
-                    className="shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                  >
-                    ✕
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => onEditar(bloque.id)}
+                        aria-label={`Editar ${bloque.tematica}`}
+                        title="Editar"
+                        className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmandoId(bloque.id)}
+                        aria-label={`Eliminar ${bloque.tematica}`}
+                        title="Eliminar"
+                        className="shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      >
+                        ✕
+                      </button>
+                    </>
+                  )}
                 </div>
               </li>
             )

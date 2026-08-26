@@ -120,6 +120,22 @@ describe('HorarioEditor', () => {
     ).toBeInTheDocument()
   })
 
+  it('eliminar un bloque pide confirmación — cancelar no borra nada', async () => {
+    const usuario = userEvent.setup()
+    renderVacio()
+    await crearBloqueDesdeCelda(usuario, CELDA_LUNES)
+
+    await usuario.click(screen.getByRole('button', { name: /Eliminar Programación/i }))
+    expect(screen.getByRole('button', { name: /Confirmar eliminar Programación/i })).toBeInTheDocument()
+
+    await usuario.click(screen.getByRole('button', { name: /Cancelar eliminar Programación/i }))
+
+    expect(
+      screen.getByRole('button', { name: 'Lunes, 6:15 a.m – 9:00 a.m: Programación' }),
+    ).toBeInTheDocument()
+    expect(within(screen.getByRole('list')).getByText('Programación')).toBeInTheDocument()
+  })
+
   it('eliminar un bloque desde el panel lo quita de todas las celdas que lo tenían', async () => {
     const usuario = userEvent.setup()
     renderVacio()
@@ -127,6 +143,7 @@ describe('HorarioEditor', () => {
     await usuario.click(screen.getByRole('button', { name: CELDA_MARTES }))
 
     await usuario.click(screen.getByRole('button', { name: /Eliminar Programación/i }))
+    await usuario.click(screen.getByRole('button', { name: /Confirmar eliminar Programación/i }))
 
     expect(screen.getByRole('button', { name: 'Lunes, 6:15 a.m – 9:00 a.m, vacía' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Martes, 6:15 a.m – 9:00 a.m, vacía' })).toBeInTheDocument()
