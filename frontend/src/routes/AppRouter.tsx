@@ -2,7 +2,9 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { Login } from '../pages/Login'
 import { Registro } from '../pages/Registro'
 import { RecuperarContrasena } from '../pages/RecuperarContrasena'
+import { RestablecerContrasena } from '../pages/RestablecerContrasena'
 import { Dashboard } from '../pages/Dashboard'
+import { NuevoHorario } from '../pages/NuevoHorario'
 import { ProtectedRoute } from './ProtectedRoute'
 
 /**
@@ -18,11 +20,20 @@ export function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/registro" element={<Registro />} />
       <Route path="/recuperar-contrasena" element={<RecuperarContrasena />} />
+      <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/horarios/nuevo"
+        element={
+          <ProtectedRoute>
+            <NuevoHorario />
           </ProtectedRoute>
         }
       />

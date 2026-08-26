@@ -14,3 +14,13 @@ export interface Rol {
   idRol: number
   nombre: string
 }
+
+export interface Jornada {
+  idJornada: number
+  nombreJornada: string
+}
+
+export interface DiaSemana {
+  idDia: number
+  nombreDia: string
+}
