@@ -6,7 +6,7 @@ export type RegisterRequest = {
   codigoInstructor?: string; especialidad?: string; codigoFicha?: string; programaFormacion?: string;
 };
 
-type StoredUser = AuthUser & { password: string; telefono: string };
+type StoredUser = AuthUser & { id: string; password: string; telefono: string };
 const USERS_KEY = "sihs_users";
 const SESSION_KEY = "sihs_user";
 const INSTRUCTOR_CODES_KEY = "sihs_instructor_codes";
@@ -33,7 +33,7 @@ export const authService = {
       if (!request.codigoInstructor || !codes.includes(request.codigoInstructor)) throw new Error("El código de instructor no es válido.");
     }
     if (request.rol === "APRENDIZ" && (!request.codigoFicha || !request.programaFormacion)) throw new Error("La ficha y el programa de formación son obligatorios.");
-    const user: StoredUser = { ...request, documento, nombres: request.nombres.trim(), apellidos: request.apellidos.trim(), correo, rol: request.rol, telefono: request.telefono.trim(), password: request.password };
+    const user: StoredUser = { ...request, id: crypto.randomUUID(), documento, nombres: request.nombres.trim(), apellidos: request.apellidos.trim(), correo, rol: request.rol, telefono: request.telefono.trim(), password: request.password };
     localStorage.setItem(USERS_KEY, JSON.stringify([...current, user]));
   },
   async requestRecovery(correo: string) {

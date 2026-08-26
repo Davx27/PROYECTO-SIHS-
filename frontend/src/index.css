@@ -161,3 +161,36 @@ body:has(.login-form) { background: #eef2f6; }
   .login-form { width: min(100% - 24px, 470px); min-height: 0; margin: 24px auto; padding: 32px 24px; }
   .login-form .links { align-items: flex-start; flex-direction: column; gap: 9px; }
 }
+
+:root {
+  --accent: #38a900;
+  --accent-dark: #2d8700;
+  --accent-soft: #eaf7df;
+}
+
+.brand-mark,
+.global-search button,
+.button,
+.quick-actions > a,
+.quick-actions > a:nth-of-type(2),
+.quick-actions > a:nth-of-type(3),
+.login-brand-mark,
+.stat-icon.blue,
+.stat-icon.green,
+.stat-icon.navy,
+.stat-icon.cyan { background: var(--accent); }
+
+.sidebar nav a:hover,
+.sidebar nav .nav-active { color: var(--accent); background: var(--accent-soft); }
+.avatar { background: #e3f2eb; color: var(--accent); }
+.title-accent { color: var(--accent); }
+.room-tag { color: var(--accent); background: var(--accent-soft); }
+.quick-actions > a:hover,
+.global-search button:hover,
+.button:hover { background: var(--accent-dark); }
+.empty-icon { background: var(--accent-soft); color: var(--accent); }
+.strength-track span { background: var(--accent); }
+.password-toggle, a { color: var(--accent); }
+.login-form .field input:focus,
+.login-form .field select:focus,
+.login-form .search:focus { border-color: #8bc2a9; outline-color: var(--accent-soft); }
