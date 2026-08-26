@@ -34,7 +34,7 @@ export function HorarioEditor({ bloquesIniciales, gridInicial }: HorarioEditorPr
         onEliminar={estado.eliminarBloque}
       />
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-5">
+      <div className="min-w-0 overflow-x-auto rounded-xl border border-slate-200 bg-white p-5">
         {estado.bloqueActivo && (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-sena-50 px-3 py-2 text-xs text-sena-700">
             <span>

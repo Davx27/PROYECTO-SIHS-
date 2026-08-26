@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import senaLogo from '../assets/sena-logo.jpeg'
 import { useAuth } from '../hooks/useAuth'
@@ -24,6 +24,13 @@ function letraInicial(nombre: string) {
   return nombre.trim().charAt(0).toUpperCase()
 }
 
+// El menú flota sobre el contenido (position: fixed) en vez de empujarlo —
+// así el grid de horarios (mínimo 1100px, ver GridHorario.tsx) siempre
+// tiene el ancho completo del viewport disponible y nunca necesita scroll
+// lateral, esté el menú abierto o cerrado.
+const RETRASO_APERTURA_HOVER_MS = 1500
+const RETRASO_CIERRE_HOVER_MS = 300
+
 interface AppShellProps {
   /** Etiqueta del ítem de NAV que debe verse activo (debe matchear `etiqueta` arriba). */
   activo: string
@@ -31,8 +38,8 @@ interface AppShellProps {
 }
 
 /**
- * Sidebar + header institucional, compartido por Dashboard.tsx y cualquier
- * pantalla nueva bajo /dashboard. Réplica de
+ * Sidebar (overlay) + header institucional, compartido por Dashboard.tsx y
+ * cualquier pantalla nueva bajo /dashboard. Réplica de
  * _Docs/Diseño/mockups-institucionales/03-dashboard.png — ver
  * _Docs/Diseño/GUIA_DE_MARCA.md para las reglas de color/tipografía que
  * sigue este componente.
@@ -45,6 +52,10 @@ interface AppShellProps {
 export function AppShell({ activo, children }: AppShellProps) {
   const { signOut } = useAuth()
   const [miPerfil, setMiPerfil] = useState<Usuario | null>(null)
+  const [navAbierta, setNavAbierta] = useState(false)
+  const abiertaPorHoverRef = useRef(false)
+  const temporizadorAperturaRef = useRef<number | null>(null)
+  const temporizadorCierreRef = useRef<number | null>(null)
 
   useEffect(() => {
     apiGet<Usuario>('/usuarios/me')
@@ -52,16 +63,107 @@ export function AppShell({ activo, children }: AppShellProps) {
       .catch((err) => console.error('No se pudo cargar /usuarios/me:', err))
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (temporizadorAperturaRef.current) window.clearTimeout(temporizadorAperturaRef.current)
+      if (temporizadorCierreRef.current) window.clearTimeout(temporizadorCierreRef.current)
+    }
+  }, [])
+
+  function cancelarTemporizadores() {
+    if (temporizadorAperturaRef.current) {
+      window.clearTimeout(temporizadorAperturaRef.current)
+      temporizadorAperturaRef.current = null
+    }
+    if (temporizadorCierreRef.current) {
+      window.clearTimeout(temporizadorCierreRef.current)
+      temporizadorCierreRef.current = null
+    }
+  }
+
+  function abrirManual() {
+    cancelarTemporizadores()
+    abiertaPorHoverRef.current = false
+    setNavAbierta(true)
+  }
+
+  function cerrarManual() {
+    cancelarTemporizadores()
+    abiertaPorHoverRef.current = false
+    setNavAbierta(false)
+  }
+
+  /** Borde izquierdo de la pantalla: dejar el cursor ~1.5s la abre solo. */
+  function alEntrarBordeHover() {
+    if (navAbierta || temporizadorAperturaRef.current) return
+    temporizadorAperturaRef.current = window.setTimeout(() => {
+      abiertaPorHoverRef.current = true
+      setNavAbierta(true)
+      temporizadorAperturaRef.current = null
+    }, RETRASO_APERTURA_HOVER_MS)
+  }
+
+  function alSalirBordeHover() {
+    if (temporizadorAperturaRef.current) {
+      window.clearTimeout(temporizadorAperturaRef.current)
+      temporizadorAperturaRef.current = null
+    }
+  }
+
+  /** Si se abrió por hover, alejar el cursor del panel vuelve a cerrarlo. */
+  function alEntrarPanel() {
+    if (temporizadorCierreRef.current) {
+      window.clearTimeout(temporizadorCierreRef.current)
+      temporizadorCierreRef.current = null
+    }
+  }
+
+  function alSalirPanel() {
+    if (!abiertaPorHoverRef.current) return
+    temporizadorCierreRef.current = window.setTimeout(() => {
+      setNavAbierta(false)
+      abiertaPorHoverRef.current = false
+      temporizadorCierreRef.current = null
+    }, RETRASO_CIERRE_HOVER_MS)
+  }
+
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <aside className="hidden w-60 shrink-0 flex-col justify-between border-r border-slate-200 bg-white p-5 sm:flex">
+    <div className="min-h-screen bg-slate-50">
+      {!navAbierta && (
+        <div
+          onMouseEnter={alEntrarBordeHover}
+          onMouseLeave={alSalirBordeHover}
+          className="fixed left-0 top-0 z-40 h-screen w-4"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        onMouseEnter={alEntrarPanel}
+        onMouseLeave={alSalirPanel}
+        className={`fixed left-0 top-0 z-50 flex h-screen w-60 shrink-0 flex-col justify-between border-r border-slate-200 bg-white p-5 shadow-2xl transition-transform duration-200 ${
+          navAbierta ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div>
-          <div className="mb-8 flex items-center gap-2.5">
-            <img src={senaLogo} alt="SENA" className="h-9 w-9 rounded-lg object-cover" />
-            <div>
-              <p className="text-sm font-bold text-slate-900">SIHS</p>
-              <p className="text-xs text-slate-500">CGMLTI</p>
+          <div className="mb-8 flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <img src={senaLogo} alt="SENA" className="h-9 w-9 rounded-lg object-cover" />
+              <div>
+                <p className="text-sm font-bold text-slate-900">SIHS</p>
+                <p className="text-xs text-slate-500">CGMLTI</p>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={cerrarManual}
+              title="Ocultar menú"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7M4 12h16" />
+              </svg>
+            </button>
           </div>
 
           <p className="mb-2 text-xs font-semibold tracking-wide text-slate-400">GESTIÓN</p>
@@ -110,24 +212,37 @@ export function AppShell({ activo, children }: AppShellProps) {
         </div>
       </aside>
 
-      <div className="flex-1">
+      <div>
         <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3">
-          <div className="relative w-full max-w-sm">
-            <svg
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => (navAbierta ? cerrarManual() : abrirManual())}
+              title={navAbierta ? 'Ocultar menú' : 'Mostrar menú (o deja el cursor en el borde izquierdo)'}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
             >
-              <circle cx="11" cy="11" r="7" strokeWidth={2} />
-              <path strokeLinecap="round" strokeWidth={2} d="m20 20-3-3" />
-            </svg>
-            <input
-              type="search"
-              placeholder="Buscar ficha, instructor o ambiente…"
-              disabled
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3.5 text-sm text-slate-400 placeholder:text-slate-400"
-            />
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            <div className="relative w-full max-w-sm">
+              <svg
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <circle cx="11" cy="11" r="7" strokeWidth={2} />
+                <path strokeLinecap="round" strokeWidth={2} d="m20 20-3-3" />
+              </svg>
+              <input
+                type="search"
+                placeholder="Buscar ficha, instructor o ambiente…"
+                disabled
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3.5 text-sm text-slate-400 placeholder:text-slate-400"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-3">

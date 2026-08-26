@@ -32,5 +32,3 @@ app.include_router(usuario_rol_router, prefix="/api/v1")
 app.include_router(dias_semana_router, prefix="/api/v1")
 app.include_router(especialidades_router, prefix="/api/v1")
 app.include_router(jornadas_router, prefix="/api/v1")
-
-
