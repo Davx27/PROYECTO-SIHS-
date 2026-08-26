@@ -4,6 +4,7 @@ interface FilaFicha {
   codigo: string
   programa: string
   nivel: 'Tecnólogo' | 'Técnico'
+  trimestre: number
   jornada: string
   aprendices: number
 }
@@ -11,21 +12,25 @@ interface FilaFicha {
 /**
  * Datos de ejemplo — el código y el programa de la primera fila son los
  * mismos que ya usa `NuevoHorario.tsx` (ficha 3228973 B, Análisis y
- * Desarrollo de Software) para que el demo sea consistente. El resto de
- * programas sale de los 14 que mencionó el coordinador en la entrevista
- * (8 tecnólogos + 6 técnicos). Backend: `coordinaciones` → `programas` →
+ * Desarrollo de Software) para que el demo sea consistente. La mayoría de
+ * programas sale de los 14 que mencionó el coordinador de Teleinformática
+ * (8 tecnólogos + 6 técnicos); la ficha 3068356 es la que usó como ejemplo
+ * el coordinador de Logística (6° trimestre, tarde, Coordinación de
+ * Procesos Logísticos — programa con 18 guías y 91 resultados de
+ * aprendizaje en 7 trimestres). Backend: `coordinaciones` → `programas` →
  * `trimestres` → `fichas` todavía no existe en código (siguiente paso
  * desbloqueado del roadmap) — ver
  * `_Docs/Documentación general/REGLAS_DE_NEGOCIO_CONOCIDAS.md`.
  */
 const FICHAS: FilaFicha[] = [
-  { codigo: '3228973 B', programa: 'Análisis y Desarrollo de Software', nivel: 'Tecnólogo', jornada: 'Mañana', aprendices: 30 },
-  { codigo: '2758431', programa: 'Análisis y Desarrollo de Software', nivel: 'Tecnólogo', jornada: 'Noche', aprendices: 32 },
-  { codigo: '2691205', programa: 'Gestión de Redes de Datos', nivel: 'Tecnólogo', jornada: 'Tarde', aprendices: 28 },
-  { codigo: '2744309', programa: 'Implementación de Infraestructura', nivel: 'Tecnólogo', jornada: 'Mañana', aprendices: 30 },
-  { codigo: '2803577', programa: 'Técnico en Programación de Software', nivel: 'Técnico', jornada: 'Tarde', aprendices: 35 },
-  { codigo: '2712880', programa: 'Técnico en Sistemas Teleinformáticos', nivel: 'Técnico', jornada: 'Noche', aprendices: 30 },
-  { codigo: '2766142', programa: 'Seguridad Digital', nivel: 'Técnico', jornada: 'Noche', aprendices: 30 },
+  { codigo: '3228973 B', programa: 'Análisis y Desarrollo de Software', nivel: 'Tecnólogo', trimestre: 3, jornada: 'Mañana', aprendices: 30 },
+  { codigo: '2758431', programa: 'Análisis y Desarrollo de Software', nivel: 'Tecnólogo', trimestre: 3, jornada: 'Noche', aprendices: 32 },
+  { codigo: '2691205', programa: 'Gestión de Redes de Datos', nivel: 'Tecnólogo', trimestre: 2, jornada: 'Tarde', aprendices: 28 },
+  { codigo: '2744309', programa: 'Implementación de Infraestructura', nivel: 'Tecnólogo', trimestre: 4, jornada: 'Mañana', aprendices: 30 },
+  { codigo: '2803577', programa: 'Técnico en Programación de Software', nivel: 'Técnico', trimestre: 1, jornada: 'Tarde', aprendices: 35 },
+  { codigo: '2712880', programa: 'Técnico en Sistemas Teleinformáticos', nivel: 'Técnico', trimestre: 2, jornada: 'Noche', aprendices: 30 },
+  { codigo: '2766142', programa: 'Seguridad Digital', nivel: 'Técnico', trimestre: 1, jornada: 'Noche', aprendices: 30 },
+  { codigo: '3068356', programa: 'Tecnología en Coordinación de Procesos Logísticos', nivel: 'Tecnólogo', trimestre: 6, jornada: 'Tarde', aprendices: 30 },
 ]
 
 const estiloNivel: Record<FilaFicha['nivel'], string> = {
@@ -54,6 +59,7 @@ export function Fichas() {
               <th className="px-4 py-3">Ficha</th>
               <th className="px-4 py-3">Programa</th>
               <th className="px-4 py-3">Nivel</th>
+              <th className="px-4 py-3">Trimestre</th>
               <th className="px-4 py-3">Jornada</th>
               <th className="px-4 py-3">Aprendices</th>
             </tr>
@@ -68,6 +74,7 @@ export function Fichas() {
                     {f.nivel}
                   </span>
                 </td>
+                <td className="px-4 py-3 text-slate-600">{f.trimestre}°</td>
                 <td className="px-4 py-3 text-slate-600">{f.jornada}</td>
                 <td className="px-4 py-3 text-slate-600">{f.aprendices}</td>
               </tr>
