@@ -12,6 +12,14 @@ from app.api.v1.jornadas import router as jornadas_router
 from app.api.v1.sedes import router as sedes_router
 from app.api.v1.ambientes import router as ambientes_router
 from app.api.v1.horarios_guardados import router as horarios_guardados_router
+from app.api.v1.coordinaciones import router as coordinaciones_router
+from app.api.v1.programas import router as programas_router
+from app.api.v1.trimestres import router as trimestres_router
+from app.api.v1.fichas import router as fichas_router
+from app.api.v1.guias import router as guias_router
+from app.api.v1.competencias_formacion import router as competencias_formacion_router
+from app.api.v1.resultados_aprendizaje import router as resultados_aprendizaje_router
+from app.api.v1.horarios import router as horarios_router
 
 
 app = FastAPI(title=settings.app_name)
@@ -38,3 +46,11 @@ app.include_router(jornadas_router, prefix="/api/v1")
 app.include_router(sedes_router, prefix="/api/v1")
 app.include_router(ambientes_router, prefix="/api/v1")
 app.include_router(horarios_guardados_router, prefix="/api/v1")
+app.include_router(coordinaciones_router, prefix="/api/v1")
+app.include_router(programas_router, prefix="/api/v1")
+app.include_router(trimestres_router, prefix="/api/v1")
+app.include_router(fichas_router, prefix="/api/v1")
+app.include_router(guias_router, prefix="/api/v1")
+app.include_router(competencias_formacion_router, prefix="/api/v1")
+app.include_router(resultados_aprendizaje_router, prefix="/api/v1")
+app.include_router(horarios_router, prefix="/api/v1")

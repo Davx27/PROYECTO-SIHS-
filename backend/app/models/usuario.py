@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Enum, String
+from sqlalchemy import Column, DateTime, Enum, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -25,6 +25,11 @@ class Usuario(Base):
     )
 
     fechaRegistro = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Solo aplica a instructores — nullable a propósito, ver
+    # _Docs/Documentación general/PLAN_INTEGRACION_LOGICA_Y_BD.md §2.2.
+    tipoContrato = Column(String(20))
+    horasContratadasSemana = Column(Integer)
 
     roles = relationship(
         "Rol",

@@ -4,9 +4,21 @@ Este documento es el puente entre `REGLAS_DE_NEGOCIO_CONOCIDAS.md` (qué
 sabemos del dominio real) y el código: qué cambiar en el esquema, en qué
 orden programarlo, y **qué formato de datos pedirle a la coordinación**
 para que, cuando lleguen, se puedan cargar directo sin reinterpretarlos.
-Nada de lo que propone este documento está aplicado todavía — es la
-propuesta a revisar antes de tocar `01_creacion.sql` en producción.
 Última actualización: 2026-08-26.
+
+> **Estado (2026-08-26, tarde):** las secciones 1-3 ya están aplicadas —
+> esquema, backend (8 módulos nuevos: coordinaciones, programas,
+> trimestres, fichas, guias, competencias_formacion,
+> resultados_aprendizaje, horarios) y un dataset sintético pequeño
+> (`database/02_datos_prueba.sql`, sección "AMPLIACIÓN 2026-08-26"), todo
+> corrido contra el Supabase real del equipo y probado en vivo: la
+> detección de cruces del §3 rechaza correctamente instructor/ambiente/
+> ficha duplicados y resultado repetido. De paso se descubrió y corrigió
+> que `database/migrations/03_ambientes_requisitos.sql` nunca se había
+> aplicado a la base real — ya se aplicó. Lo que sigue pendiente: la
+> sección 5 (migrar `NuevoHorario.tsx` de `horarios_guardados` al módulo
+> `horarios` real) y reemplazar el dataset sintético cuando lleguen datos
+> reales (sección 4).
 
 ## 1. Qué ya no requiere información nueva (se puede programar ya)
 

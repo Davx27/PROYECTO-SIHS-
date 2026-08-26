@@ -223,3 +223,179 @@ WHERE d."nombreDia" IN ('Lunes', 'Miércoles');
 --       SELECT "idHorario" FROM horario_dia
 --       WHERE "idDia" = ANY(:diasNuevos)
 --   );
+
+-- =========================================================
+-- AMPLIACIÓN 2026-08-26 — dataset sintético pequeño para poder probar el
+-- módulo `horarios` real (con detección de cruces) de punta a punta
+-- mientras no hay catálogos reales de la coordinación. Ver
+-- _Docs/Documentación general/PLAN_INTEGRACION_LOGICA_Y_BD.md.
+-- Todo lo de acá es INVENTADO — reemplazar cuando lleguen los datos reales.
+-- =========================================================
+
+-- Más ambientes (además de "Lab Sistemas 1" y "Taller Industrial")
+INSERT INTO ambientes ("nombreAmbiente", "idSede")
+SELECT 'Lab Sistemas 2', "idSede" FROM sedes WHERE "nombreSede" = 'Sede Principal';
+
+INSERT INTO ambientes ("nombreAmbiente", "idSede")
+SELECT 'Sala Multimedia', "idSede" FROM sedes WHERE "nombreSede" = 'Sede Principal';
+
+INSERT INTO ambientes ("nombreAmbiente", "idSede")
+SELECT 'Taller Logística', "idSede" FROM sedes WHERE "nombreSede" = 'Sede Norte';
+
+INSERT INTO ambientes ("nombreAmbiente", "idSede")
+SELECT 'Aula 307', "idSede" FROM sedes WHERE "nombreSede" = 'Sede Norte';
+
+-- Más fichas (además de '2874521' ADSO y '2874522' Mantenimiento Industrial)
+INSERT INTO fichas ("codigoFicha", "idPrograma", "idTrimestre")
+SELECT '2874523', p."idPrograma", t."idTrimestre"
+FROM programas p, trimestres t
+WHERE p."codigoPrograma" = '228106' AND t."nombre" = 'Trimestre 2 - 2026';
+
+INSERT INTO fichas ("codigoFicha", "idPrograma", "idTrimestre")
+SELECT '2874524', p."idPrograma", t."idTrimestre"
+FROM programas p, trimestres t
+WHERE p."codigoPrograma" = '221101' AND t."nombre" = 'Trimestre 2 - 2026';
+
+-- Más especialidades
+INSERT INTO especialidades ("nombre", "descripcion") VALUES
+('Bases de Datos', 'Modelado y administración de bases de datos'),
+('Logística General', 'Cadena de suministros, almacenamiento e inventarios'),
+('Comercio Exterior', 'Importación, exportación, aranceles y documentación — especializada, ver REGLAS_DE_NEGOCIO_CONOCIDAS.md')
+ON CONFLICT ("nombre") DO NOTHING;
+
+-- Más instructores (además de carlos@mail.com), mismo mecanismo vía
+-- Supabase Auth que el bloque de arriba.
+INSERT INTO auth.users (
+    instance_id, id, aud, role, email, encrypted_password,
+    email_confirmed_at, created_at, updated_at,
+    confirmation_token, recovery_token, email_change_token_new, email_change,
+    raw_app_meta_data, raw_user_meta_data, is_super_admin
+)
+SELECT '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', datos.email, crypt('Prueba123!', gen_salt('bf')), now(), now(), now(), '', '', '', '', '{"provider":"email","providers":["email"]}', '{}', false
+FROM (VALUES
+    ('sergio@mail.com'),
+    ('fredy@mail.com'),
+    ('david@mail.com')
+) AS datos(email)
+WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.email = datos.email);
+
+INSERT INTO auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+SELECT gen_random_uuid(), u.id, u.id::text, jsonb_build_object('sub', u.id::text, 'email', u.email), 'email', now(), now(), now()
+FROM auth.users u
+WHERE u.email IN ('sergio@mail.com', 'fredy@mail.com', 'david@mail.com')
+  AND NOT EXISTS (
+      SELECT 1 FROM auth.identities i WHERE i.user_id = u.id AND i.provider = 'email'
+  );
+
+INSERT INTO usuarios ("idUsuario", "nombre", "email")
+SELECT id, 'Sergio Garzón', email FROM auth.users WHERE email = 'sergio@mail.com'
+UNION ALL
+SELECT id, 'Fredy Ardila', email FROM auth.users WHERE email = 'fredy@mail.com'
+UNION ALL
+SELECT id, 'David Camelo', email FROM auth.users WHERE email = 'david@mail.com'
+ON CONFLICT ("idUsuario") DO NOTHING;
+
+INSERT INTO usuario_rol ("idUsuario", "idRol")
+SELECT u."idUsuario", r."idRol" FROM usuarios u, roles r
+WHERE u."email" IN ('sergio@mail.com', 'fredy@mail.com', 'david@mail.com') AND r."nombre" = 'Instructor'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO usuario_especialidad ("idUsuario", "idEspecialidad")
+SELECT u."idUsuario", e."idEspecialidad" FROM usuarios u, especialidades e
+WHERE u."email" = 'sergio@mail.com' AND e."nombre" = 'Programación'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO usuario_especialidad ("idUsuario", "idEspecialidad")
+SELECT u."idUsuario", e."idEspecialidad" FROM usuarios u, especialidades e
+WHERE u."email" = 'fredy@mail.com' AND e."nombre" = 'Bases de Datos'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO usuario_especialidad ("idUsuario", "idEspecialidad")
+SELECT u."idUsuario", e."idEspecialidad" FROM usuarios u, especialidades e
+WHERE u."email" = 'david@mail.com' AND e."nombre" = 'Logística General'
+ON CONFLICT DO NOTHING;
+
+-- tipoContrato / horasContratadasSemana — ver REGLAS_DE_NEGOCIO_CONOCIDAS.md
+-- ("planta se programa primero, debe llegar a 32h/semana").
+UPDATE usuarios SET "tipoContrato" = 'contratista' WHERE "email" = 'carlos@mail.com';
+UPDATE usuarios SET "tipoContrato" = 'planta', "horasContratadasSemana" = 32 WHERE "email" = 'sergio@mail.com';
+UPDATE usuarios SET "tipoContrato" = 'contratista' WHERE "email" = 'fredy@mail.com';
+UPDATE usuarios SET "tipoContrato" = 'planta', "horasContratadasSemana" = 32 WHERE "email" = 'david@mail.com';
+
+-- Guías (capa nueva que reveló la entrevista de Logística — ver
+-- PLAN_INTEGRACION_LOGICA_Y_BD.md §2.1)
+INSERT INTO guias ("codigo", "idPrograma", "idTrimestre")
+SELECT 'Guía 1', p."idPrograma", t."idTrimestre"
+FROM programas p, trimestres t
+WHERE p."codigoPrograma" = '228106' AND t."nombre" = 'Trimestre 1 - 2026';
+
+INSERT INTO guias ("codigo", "idPrograma", "idTrimestre")
+SELECT 'Guía 2', p."idPrograma", t."idTrimestre"
+FROM programas p, trimestres t
+WHERE p."codigoPrograma" = '228106' AND t."nombre" = 'Trimestre 2 - 2026';
+
+INSERT INTO guias ("codigo", "idPrograma", "idTrimestre")
+SELECT 'Guía 1', p."idPrograma", t."idTrimestre"
+FROM programas p, trimestres t
+WHERE p."codigoPrograma" = '221101' AND t."nombre" = 'Trimestre 1 - 2026';
+
+-- Más competencias / resultados (además de '220501093'/'24020101')
+INSERT INTO competencias_formacion ("codigo", "descripcion", "idPrograma")
+SELECT '220501094', 'Construir la base de datos del proyecto', "idPrograma"
+FROM programas WHERE "codigoPrograma" = '228106';
+
+INSERT INTO competencias_formacion ("codigo", "descripcion", "idPrograma")
+SELECT 'CPL01', 'Identificar los elementos de la cadena de suministros', "idPrograma"
+FROM programas WHERE "codigoPrograma" = '221101';
+
+INSERT INTO resultados_aprendizaje ("codigo", "descripcion", "idCompetencia", "idGuia", "horasAsignadas")
+SELECT '24020102', 'Construir la base de datos a partir del modelo de datos', c."idCompetencia", g."idGuia", 40
+FROM competencias_formacion c, guias g
+WHERE c."codigo" = '220501094' AND g."codigo" = 'Guía 2' AND g."idPrograma" = c."idPrograma";
+
+INSERT INTO resultados_aprendizaje ("codigo", "descripcion", "idCompetencia", "idGuia", "horasAsignadas")
+SELECT 'CPL21', 'Identificar los elementos de la cadena de suministros', c."idCompetencia", g."idGuia", 40
+FROM competencias_formacion c, guias g
+WHERE c."codigo" = 'CPL01' AND g."codigo" = 'Guía 1' AND g."idPrograma" = c."idPrograma";
+
+-- Más horarios válidos (ninguno se cruza entre sí ni con el que ya existía
+-- de Carlos/Lunes-Miércoles/Lab Sistemas 1/ficha 2874521)
+INSERT INTO horarios ("horaInicio", "horaFin", "idJornada", "idTrimestre", "idAmbiente", "idInstructor", "idFicha", "idResultado")
+SELECT '09:00', '11:00', j."idJornada", t."idTrimestre", a."idAmbiente", i."idUsuario", f."idFicha", r."idResultado"
+FROM jornadas j, trimestres t, ambientes a, usuarios i, fichas f, resultados_aprendizaje r
+WHERE j."nombreJornada" = 'Mañana'
+  AND t."nombre" = 'Trimestre 1 - 2026'
+  AND a."nombreAmbiente" = 'Lab Sistemas 2'
+  AND i."email" = 'fredy@mail.com'
+  AND f."codigoFicha" = '2874521'
+  AND r."codigo" = '24020102';
+
+INSERT INTO horario_dia ("idHorario", "idDia")
+SELECT h."idHorario", d."idDia"
+FROM horarios h
+JOIN ambientes a ON a."idAmbiente" = h."idAmbiente" AND a."nombreAmbiente" = 'Lab Sistemas 2',
+     "diasDeLaSemana" d
+WHERE d."nombreDia" IN ('Martes', 'Jueves')
+  AND h."idHorario" = (SELECT "idHorario" FROM horarios ORDER BY "idHorario" DESC LIMIT 1);
+
+INSERT INTO horarios ("horaInicio", "horaFin", "idJornada", "idTrimestre", "idAmbiente", "idInstructor", "idFicha", "idResultado")
+SELECT '13:00', '15:00', j."idJornada", t."idTrimestre", a."idAmbiente", i."idUsuario", f."idFicha", r."idResultado"
+FROM jornadas j, trimestres t, ambientes a, usuarios i, fichas f, resultados_aprendizaje r
+WHERE j."nombreJornada" = 'Tarde'
+  AND t."nombre" = 'Trimestre 1 - 2026'
+  AND a."nombreAmbiente" = 'Taller Logística'
+  AND i."email" = 'david@mail.com'
+  AND f."codigoFicha" = '2874522'
+  AND r."codigo" = 'CPL21';
+
+INSERT INTO horario_dia ("idHorario", "idDia")
+SELECT h."idHorario", d."idDia"
+FROM horarios h,
+     "diasDeLaSemana" d
+WHERE d."nombreDia" IN ('Lunes', 'Miércoles', 'Viernes')
+  AND h."idHorario" = (SELECT "idHorario" FROM horarios ORDER BY "idHorario" DESC LIMIT 1);
+
+-- Con esto queda armado un caso real de prueba para el cruce: intentar
+-- crear (vía POST /api/v1/horarios) un horario para carlos@mail.com el
+-- Lunes de 08:00 a 10:00 en cualquier ambiente debe rechazarse con 409 —
+-- se solapa con su clase existente de Lunes/Miércoles 07:00-09:00.

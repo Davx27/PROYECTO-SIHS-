@@ -30,41 +30,52 @@ patrón que ya está armado para `roles`/`usuarios`/`usuario_rol` (ver
 | Autenticación | `auth.users` (Supabase) | ✅ Hecho | Login, registro, recuperación de contraseña — vía Supabase Auth |
 | Usuarios / Roles | `usuarios`, `roles`, `usuario_rol` | ✅ Hecho | Perfil, control de acceso por rol |
 | Especialidades | `especialidades`, `usuario_especialidad` | ✅ Hecho | Catálogo de especialidades de instructores (un instructor puede tener varias) |
-| Estructura académica | `coordinaciones`, `programas`, `trimestres`, `fichas`, `ficha_usuario` | ❌ Falta | Base para poder crear fichas y matricular aprendices/instructores |
+| Estructura académica | `coordinaciones`, `programas`, `trimestres`, `fichas` | ✅ Hecho (falta `ficha_usuario` — matrícula, ver Sección de estudiantes) | Base para poder crear fichas |
 | Sedes y ambientes | `sedes`, `ambientes` | ✅ Hecho | Dónde puede dictarse una clase — necesario antes de `horarios` |
 | Jornadas y días | `jornadas`, `diasDeLaSemana` | ✅ Hecho | Catálogos simples, casi sin lógica — buen punto de entrada para alguien nuevo en el backend |
-| **Horarios** | `horarios`, `horario_dia` | ❌ **Falta — es el objetivo del proyecto** (hay un puente temporal `horarios_guardados` en JSONB, ver abajo) | Crear/editar horarios **detectando cruces** de instructor, ambiente y ficha |
-| Competencias / resultados / actividades | `competencias_formacion`, `resultados_aprendizaje`, `actividades_aprendizaje` | ❌ Falta | Lo que se enseña en cada bloque de horario — relacionado con el "semáforo" que mencionó el coordinador en la entrevista |
+| Guías | `guias` (tabla nueva, 2026-08-26) | ✅ Hecho | Agrupa resultados de aprendizaje y los ubica en un trimestre — ver `PLAN_INTEGRACION_LOGICA_Y_BD.md` §2.1 |
+| **Horarios** | `horarios`, `horario_dia` | ✅ **Hecho — detección de cruces probada en vivo contra Supabase** | Crear/editar horarios **detectando cruces** de instructor, ambiente, ficha y resultado repetido |
+| Competencias / resultados | `competencias_formacion`, `resultados_aprendizaje` | ✅ Hecho | Lo que se enseña en cada bloque de horario |
+| Actividades de aprendizaje | `actividades_aprendizaje` | ❌ Falta | Desglose fino de un resultado — no bloquea `horarios`, se puede hacer después |
+| Matrícula de fichas | `ficha_usuario` | ❌ Falta | Necesaria para la Sección de estudiantes, no para `horarios` |
 
 ## Orden recomendado para programar lo que falta
 
-No es obligatorio seguir este orden exacto, pero cada módulo depende de que
-el anterior ya exista (por las llaves foráneas). Actualizado 2026-08-26 —
-los pasos 1, 2 y 4 ya están hechos:
+Actualizado 2026-08-26 — **el núcleo del sistema (catálogos + `horarios`
+con detección de cruces) ya está hecho**, con datos sintéticos para poder
+probarlo (ver `database/02_datos_prueba.sql`, sección "AMPLIACIÓN
+2026-08-26"). La detección de cruces se probó en vivo contra Supabase:
+rechaza instructor duplicado, ambiente duplicado, ficha duplicada y
+resultado repetido en la misma ficha con `409` y el mensaje correspondiente
+(ver `_Docs/Documentación general/PLAN_INTEGRACION_LOGICA_Y_BD.md` §3).
 
 1. ~~Jornadas y días~~ — ✅ hecho.
-2. ~~Sedes → Ambientes~~ — ✅ hecho.
-3. **Coordinaciones → Programas → Trimestres → Fichas** — esta cadena hay
-   que hacerla en ese orden porque cada una depende de la anterior. **Es el
-   siguiente paso desbloqueado** — no depende de ninguna decisión pendiente
-   con la coordinación, solo de programar el CRUD siguiendo el esquema ya
-   definido en `01_creacion.sql`.
+2. ~~Sedes → Ambientes~~ — ✅ hecho (ojo: la migración
+   `database/migrations/03_ambientes_requisitos.sql` no estaba aplicada en
+   Supabase hasta ahora — ya se aplicó).
+3. ~~Coordinaciones → Programas → Trimestres → Fichas~~ — ✅ hecho.
 4. ~~Especialidades~~ — ✅ hecho.
-5. **Competencias → Resultados → Actividades de aprendizaje** — cadena
-   parecida a la de fichas, también en orden.
-6. **Horarios** — el último porque depende de TODO lo anterior (jornada,
-   ambiente, instructor, ficha, resultado). Es el módulo más importante y el
-   más delicado: la detección de cruces tiene que validarse en el `service`
-   antes de guardar (ver la consulta de ejemplo al final de
-   `database/02_datos_prueba.sql`), y ya existe el `EXCLUDE` constraint de
-   PostgreSQL comentado en `01_creacion.sql` como segunda barrera a nivel de
-   base de datos — **ojo:** esa consulta de ejemplo solo compara
-   instructor/ambiente, falta sumarle la validación de cruce por ficha (una
-   ficha tampoco puede tener dos clases al mismo tiempo) antes de darla por
-   completa. El `EXCLUDE` constraint también sigue bloqueado por el mismo
-   motivo que dice el comentario en `01_creacion.sql`: exige que el día viva
-   en la misma tabla `horarios` en vez de en `horario_dia` aparte — hay que
-   decidir si vale la pena ese cambio de esquema antes de activarlo.
+5. ~~Guías → Competencias → Resultados~~ — ✅ hecho (`actividades_aprendizaje`
+   queda pendiente, no bloquea nada).
+6. ~~Horarios~~ — ✅ hecho, con las 4 validaciones de cruce en
+   `HorarioService._detectar_cruces`.
+
+**Lo que sigue, con datos sintéticos ya no es excusa para no avanzar:**
+
+- Reemplazar el dataset sintético por datos reales cuando lleguen (ver
+  `PLAN_INTEGRACION_LOGICA_Y_BD.md` §4 para el formato esperado por
+  catálogo).
+- Migrar `NuevoHorario.tsx` de `horarios_guardados` (JSONB, texto libre) al
+  módulo `horarios` real (selects contra los catálogos reales) — ver
+  `PLAN_INTEGRACION_LOGICA_Y_BD.md` §5. Es el trabajo de frontend más
+  importante que queda.
+- `ficha_usuario` y `actividades_aprendizaje` — no bloquean nada, se pueden
+  hacer cuando haga falta la Sección de estudiantes.
+- El `EXCLUDE` constraint de Postgres sigue comentado en `01_creacion.sql`
+  (segunda barrera a nivel de base de datos) — sigue bloqueado por lo mismo:
+  exige que el día viva en `horarios` en vez de en `horario_dia` aparte. La
+  validación en `HorarioService` ya cubre los 4 tipos de cruce sin necesitar
+  esto, así que no es urgente.
 
 ## Sección de estudiantes (planeada, no programada todavía)
 

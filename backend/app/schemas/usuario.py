@@ -12,3 +12,7 @@ class UsuarioResponse(BaseModel):
     email: EmailStr
     estado: str
     fechaRegistro: datetime
+    # Solo aplica a instructores — nullable, ver
+    # _Docs/Documentación general/PLAN_INTEGRACION_LOGICA_Y_BD.md §2.2.
+    tipoContrato: str | None = None
+    horasContratadasSemana: int | None = None

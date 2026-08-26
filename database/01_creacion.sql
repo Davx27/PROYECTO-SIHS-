@@ -16,6 +16,15 @@
 --   * Este script asume que se ejecuta dentro de un proyecto Supabase (el
 --     esquema "auth" con la tabla auth.users ya existe ahí de forma nativa).
 --
+-- v3 (2026-08-26): hallazgos de la entrevista al coordinador de Logística
+-- (ver _Docs/Documentación general/PLAN_INTEGRACION_LOGICA_Y_BD.md):
+--   * Tabla "guias" nueva — un resultado se agrupa en una guía, y es la
+--     guía la que la planeación pedagógica ubica en un trimestre.
+--   * "resultados_aprendizaje" suma "idGuia" (nullable) y "horasAsignadas".
+--   * "usuarios" suma "tipoContrato"/"horasContratadasSemana" (nullable,
+--     solo aplica a instructores) para la regla "planta se programa
+--     primero, debe llegar a 32h/semana".
+--
 -- Las columnas están en camelCase y comilladas ("idUsuario") porque así las
 -- genera SQLAlchemy en Postgres. Si consultas a mano con psql, usa las
 -- comillas: SELECT "idUsuario" FROM usuarios;
@@ -48,7 +57,13 @@ CREATE TABLE usuarios (
     "nombre"        VARCHAR(100) NOT NULL,
     "email"         VARCHAR(100) UNIQUE NOT NULL,
     "estado"        estado_usuario DEFAULT 'activo',
-    "fechaRegistro" TIMESTAMPTZ DEFAULT now()
+    "fechaRegistro" TIMESTAMPTZ DEFAULT now(),
+
+    -- Solo aplica a instructores — nullable a propósito, ver
+    -- _Docs/Documentación general/PLAN_INTEGRACION_LOGICA_Y_BD.md §2.2.
+    -- 'planta' se programa primero (resolución exige garantizar sus 32h/semana).
+    "tipoContrato"           VARCHAR(20),
+    "horasContratadasSemana" INTEGER
 );
 
 CREATE TABLE usuario_rol (
@@ -116,6 +131,20 @@ CREATE TABLE ficha_usuario (
 );
 
 -- =========================================================
+-- GUÍAS
+-- Capa que reveló la entrevista al coordinador de Logística: un resultado
+-- de aprendizaje se agrupa en una guía, y es la GUÍA (no el resultado
+-- directo) la que la planeación pedagógica ubica en un trimestre. Ver
+-- _Docs/Documentación general/PLAN_INTEGRACION_LOGICA_Y_BD.md §2.1.
+-- =========================================================
+CREATE TABLE guias (
+    "idGuia"      SERIAL PRIMARY KEY,
+    "codigo"      VARCHAR(50) NOT NULL,
+    "idPrograma"  INTEGER NOT NULL REFERENCES programas("idPrograma"),
+    "idTrimestre" INTEGER NOT NULL REFERENCES trimestres("idTrimestre")
+);
+
+-- =========================================================
 -- COMPETENCIAS / RESULTADOS / ACTIVIDADES
 -- =========================================================
 CREATE TABLE competencias_formacion (
@@ -125,12 +154,16 @@ CREATE TABLE competencias_formacion (
     "idPrograma"    INTEGER NOT NULL REFERENCES programas("idPrograma")
 );
 
+-- "idGuia" es nullable a propósito: no todos los programas tienen esta
+-- capa digitalizada todavía (ver el documento referenciado arriba).
 CREATE TABLE resultados_aprendizaje (
-    "idResultado"   SERIAL PRIMARY KEY,
-    "codigo"        VARCHAR(50),
-    "descripcion"   TEXT NOT NULL,
-    "idCompetencia" INTEGER NOT NULL REFERENCES competencias_formacion("idCompetencia")
-        ON DELETE CASCADE
+    "idResultado"     SERIAL PRIMARY KEY,
+    "codigo"          VARCHAR(50),
+    "descripcion"     TEXT NOT NULL,
+    "idCompetencia"   INTEGER NOT NULL REFERENCES competencias_formacion("idCompetencia")
+        ON DELETE CASCADE,
+    "idGuia"          INTEGER REFERENCES guias("idGuia"),
+    "horasAsignadas"  INTEGER
 );
 
 CREATE TABLE actividades_aprendizaje (
