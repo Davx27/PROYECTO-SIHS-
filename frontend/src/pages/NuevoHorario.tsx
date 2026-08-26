@@ -116,7 +116,13 @@ export function NuevoHorario() {
     const { bloques: bloquesActuales, grid: gridActual } = estadoActualRef.current
     const grupos = agruparCeldas(gridActual)
     const errores: string[] = []
-    let creados = 0
+
+    // Cada grupo se guarda o falla de forma independiente — si uno choca,
+    // los demás igual se crean de verdad y quedan en el historial. Antes
+    // esto era todo-o-nada: un solo cruce descartaba hasta las clases que
+    // sí habían quedado guardadas en `horarios`.
+    const gridExitoso: GridAsignaciones = gridVacio()
+    const idsBloquesExitosos = new Set<string>()
 
     for (const grupo of grupos) {
       const bloque = bloquesActuales.find((b) => b.id === grupo.bloqueId)
@@ -148,7 +154,10 @@ export function NuevoHorario() {
 
       try {
         await apiPost('/horarios/', datos)
-        creados += 1
+        idsBloquesExitosos.add(grupo.bloqueId)
+        for (const diaIdx of grupo.diasIdx) {
+          gridExitoso[grupo.bloqueIdx][diaIdx] = grupo.bloqueId
+        }
       } catch (err) {
         if (err instanceof ApiError && err.status === 409) {
           const detalle = err.detail as { mensajes?: string[] } | null
@@ -160,31 +169,30 @@ export function NuevoHorario() {
       }
     }
 
-    if (errores.length > 0) {
-      setErroresGuardar(errores)
-      setGuardando(false)
-      return
+    const creados = gridExitoso.reduce((total, fila) => total + fila.filter(Boolean).length, 0)
+
+    if (creados > 0) {
+      // Snapshot en `horarios_guardados` solo con lo que sí quedó creado de
+      // verdad — para el Historial/exportar a PDF (ver
+      // PLAN_INTEGRACION_LOGICA_Y_BD.md §5, migración pendiente).
+      try {
+        await apiPost('/horarios-guardados/', {
+          ficha,
+          aprendices,
+          horasTrimestre,
+          fechaInicio,
+          fechaFin,
+          bloques: bloquesActuales.filter((b) => idsBloquesExitosos.has(b.id)),
+          grid: gridExitoso,
+        })
+      } catch {
+        // El snapshot es de apoyo — si falla, las clases reales ya
+        // quedaron creadas, así que no se trata como error fatal.
+      }
+      setMensajeExito(`${creados} clase${creados === 1 ? '' : 's'} guardada${creados === 1 ? '' : 's'} sin cruces.`)
     }
 
-    // Sin cruces: además de las filas reales en `horarios`, se guarda un
-    // snapshot en `horarios_guardados` para el Historial/exportar a PDF —
-    // ver PLAN_INTEGRACION_LOGICA_Y_BD.md §5 (migración pendiente).
-    try {
-      await apiPost('/horarios-guardados/', {
-        ficha,
-        aprendices,
-        horasTrimestre,
-        fechaInicio,
-        fechaFin,
-        bloques: bloquesActuales,
-        grid: gridActual,
-      })
-    } catch {
-      // El snapshot es de apoyo (historial/PDF) — si falla, las clases
-      // reales ya quedaron creadas, así que no se trata como error fatal.
-    }
-
-    setMensajeExito(`${creados} clase${creados === 1 ? '' : 's'} guardada${creados === 1 ? '' : 's'} sin cruces.`)
+    setErroresGuardar(errores)
     setGuardando(false)
   }
 
@@ -228,7 +236,7 @@ export function NuevoHorario() {
 
       {erroresGuardar.length > 0 && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">
-          <p className="mb-1 font-semibold">No se pudo guardar — el sistema encontró cruces:</p>
+          <p className="mb-1 font-semibold">El sistema encontró cruces — esto no se guardó:</p>
           <ul className="list-disc space-y-0.5 pl-5">
             {erroresGuardar.map((e) => (
               <li key={e}>{e}</li>
