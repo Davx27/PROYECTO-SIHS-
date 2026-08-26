@@ -9,6 +9,8 @@ interface CeldaHorarioProps {
   /** Clase Tailwind de fondo cuando la celda está vacía (color de la jornada). */
   fondoVacio: string
   hayBloqueActivo: boolean
+  /** Modo historial/exportación: sin interacción, sin botón de quitar. */
+  soloLectura?: boolean
   onClic: (shiftKey: boolean) => void
   onQuitar: () => void
 }
@@ -20,12 +22,24 @@ interface CeldaHorarioProps {
  * activo abre el modal de edición (lo decide `NuevoHorario`, acá solo se
  * reenvía el evento); Shift-clic desde otra celda rellena el rango entero.
  */
-export function CeldaHorario({ bloque, etiqueta, fondoVacio, hayBloqueActivo, onClic, onQuitar }: CeldaHorarioProps) {
+export function CeldaHorario({
+  bloque,
+  etiqueta,
+  fondoVacio,
+  hayBloqueActivo,
+  soloLectura = false,
+  onClic,
+  onQuitar,
+}: CeldaHorarioProps) {
   function manejarClic(evento: MouseEvent<HTMLButtonElement>) {
     onClic(evento.shiftKey)
   }
 
   if (!bloque) {
+    if (soloLectura) {
+      return <div aria-label={`${etiqueta}, vacía`} className={`h-full min-h-16 w-full ${fondoVacio}`} />
+    }
+
     return (
       <button
         type="button"
@@ -41,6 +55,20 @@ export function CeldaHorario({ bloque, etiqueta, fondoVacio, hayBloqueActivo, on
   }
 
   const color = colorParaBloque(bloque.id)
+
+  if (soloLectura) {
+    return (
+      <div
+        aria-label={`${etiqueta}: ${bloque.tematica}`}
+        title={`${bloque.tematica} · ${bloque.instructor} · ${bloque.ambiente}`}
+        className={`h-full min-h-16 space-y-0.5 border-l-2 px-2 py-1.5 text-left text-[11px] leading-tight ${color.fondo} ${color.borde} ${color.texto}`}
+      >
+        <p className="truncate font-semibold">{bloque.tematica}</p>
+        <p className="truncate">{bloque.instructor}</p>
+        <p className="truncate opacity-80">{bloque.ambiente}</p>
+      </div>
+    )
+  }
 
   return (
     <div className={`group relative h-full min-h-16 ${color.fondo}`}>

@@ -5,6 +5,7 @@ import { RecuperarContrasena } from '../pages/RecuperarContrasena'
 import { RestablecerContrasena } from '../pages/RestablecerContrasena'
 import { Dashboard } from '../pages/Dashboard'
 import { NuevoHorario } from '../pages/NuevoHorario'
+import { HistorialHorarios } from '../pages/HistorialHorarios'
 import { ProtectedRoute } from './ProtectedRoute'
 
 /**
@@ -34,6 +35,14 @@ export function AppRouter() {
         element={
           <ProtectedRoute>
             <NuevoHorario />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/horarios/historial"
+        element={
+          <ProtectedRoute>
+            <HistorialHorarios />
           </ProtectedRoute>
         }
       />

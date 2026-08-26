@@ -228,3 +228,35 @@ CREATE INDEX "idxHorarioTrimestre"  ON horarios ("idTrimestre");
 -- ALTER TABLE horarios ENABLE ROW LEVEL SECURITY;
 -- CREATE POLICY "instructor_ve_su_horario" ON horarios
 --     FOR SELECT USING ("idInstructor" = auth.uid());
+
+-- =========================================================
+-- HORARIOS GUARDADOS (borrador del editor visual)
+-- Tabla puente: NO es la tabla "horarios" de arriba. Esa exige FKs reales a
+-- ambiente/instructor/ficha/resultado para poder detectar cruces, que es
+-- el objetivo real del proyecto. El editor visual
+-- (frontend/src/pages/NuevoHorario.tsx) hoy captura ficha/instructor/
+-- ambiente como texto libre, no como filas reales de esas tablas — así que
+-- lo que arma un usuario ahí se guarda tal cual acá (JSONB) para tener
+-- historial y poder exportarlo a PDF, mientras el módulo `horarios` real
+-- no esté construido. Ver
+-- `_Docs/Documentación general/SECCION_ESTUDIANTES.md` para más contexto.
+-- =========================================================
+CREATE TABLE horarios_guardados (
+    "idHorarioGuardado" SERIAL PRIMARY KEY,
+    "idUsuario"          UUID NOT NULL REFERENCES usuarios("idUsuario") ON DELETE CASCADE,
+
+    "ficha"              VARCHAR(100) NOT NULL,
+    "aprendices"         VARCHAR(20),
+    "horasTrimestre"     VARCHAR(20),
+    "fechaInicio"        DATE,
+    "fechaFin"           DATE,
+
+    -- Espejo de BloqueClase[] y GridAsignaciones
+    -- (frontend/src/pages/horario/tipos.ts).
+    "bloques"            JSONB NOT NULL,
+    "grid"               JSONB NOT NULL,
+
+    "fechaCreacion"      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX "idxHorarioGuardadoUsuario" ON horarios_guardados ("idUsuario");

@@ -11,6 +11,7 @@ from app.api.v1.especialidades import router as especialidades_router
 from app.api.v1.jornadas import router as jornadas_router
 from app.api.v1.sedes import router as sedes_router
 from app.api.v1.ambientes import router as ambientes_router
+from app.api.v1.horarios_guardados import router as horarios_guardados_router
 
 
 app = FastAPI(title=settings.app_name)
@@ -36,3 +37,4 @@ app.include_router(especialidades_router, prefix="/api/v1")
 app.include_router(jornadas_router, prefix="/api/v1")
 app.include_router(sedes_router, prefix="/api/v1")
 app.include_router(ambientes_router, prefix="/api/v1")
+app.include_router(horarios_guardados_router, prefix="/api/v1")

@@ -58,6 +58,15 @@ el anterior ya exista (por las llaves foráneas):
    PostgreSQL comentado en `01_creacion.sql` como segunda barrera a nivel de
    base de datos.
 
+## Sección de estudiantes (planeada, no programada todavía)
+
+Se decidió agregar una sección para que los estudiantes ingresen su ficha y
+vean su horario de la semana (solo lectura). Depende de que `fichas` y
+`horarios` (pasos 3 y 6 de arriba) ya existan en código, y todavía faltan
+decisiones de diseño por resolver — ver
+[`_Docs/Documentación general/SECCION_ESTUDIANTES.md`](../_Docs/Documentación%20general/SECCION_ESTUDIANTES.md)
+antes de empezar a programarla.
+
 ## Al terminar cada módulo
 
 Para los requisitos exactos (qué debe validar cada endpoint, qué campos son

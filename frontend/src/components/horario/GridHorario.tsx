@@ -8,25 +8,41 @@ const colorFondoJornada: Record<Jornada, { celda: string; celdaAlt: string }> = 
   Noche: { celda: 'bg-sena-50', celdaAlt: 'bg-sena-100/60' },
 }
 
+// La columna de hora usa minmax en vez de un px fijo, y las columnas de día
+// usan minmax(0, 1fr) — el 0 anula el ancho mínimo automático que un track
+// normalmente toma del contenido, así el grid SIEMPRE cabe en el ancho
+// disponible (nunca fuerza scroll lateral), aunque las celdas se achiquen;
+// el texto largo se trunca con "truncate" en vez de desbordar.
+const ESTILO_COLUMNAS = { gridTemplateColumns: 'minmax(64px, 88px) repeat(6, minmax(0, 1fr))' }
+
 interface GridHorarioProps {
   bloques: BloqueClase[]
   grid: GridAsignaciones
   hayBloqueActivo: boolean
-  onClicCelda: (posicion: PosicionCelda, shiftKey: boolean) => void
-  onQuitarCelda: (posicion: PosicionCelda) => void
+  /** Modo historial/exportación: celdas sin interacción, sin botón de quitar. */
+  soloLectura?: boolean
+  onClicCelda?: (posicion: PosicionCelda, shiftKey: boolean) => void
+  onQuitarCelda?: (posicion: PosicionCelda) => void
 }
 
 /** Grid semanal (jornada → bloque horario → día), plantilla institucional. Presentacional puro. */
-export function GridHorario({ bloques, grid, hayBloqueActivo, onClicCelda, onQuitarCelda }: GridHorarioProps) {
+export function GridHorario({
+  bloques,
+  grid,
+  hayBloqueActivo,
+  soloLectura = false,
+  onClicCelda,
+  onQuitarCelda,
+}: GridHorarioProps) {
   return (
-    <div className="min-w-[1100px]">
+    <div>
       <div
         className="grid gap-px overflow-hidden rounded-t-lg bg-slate-200 text-xs font-semibold uppercase text-white"
-        style={{ gridTemplateColumns: '160px repeat(6, minmax(0, 1fr))' }}
+        style={ESTILO_COLUMNAS}
       >
-        <div className="bg-slate-900 px-3 py-2">Hora</div>
+        <div className="truncate bg-slate-900 px-2 py-2">Hora</div>
         {DIAS.map((dia) => (
-          <div key={dia} className="bg-slate-900 px-3 py-2 text-center">
+          <div key={dia} className="truncate bg-slate-900 px-1.5 py-2 text-center">
             {dia}
           </div>
         ))}
@@ -44,13 +60,10 @@ export function GridHorario({ bloques, grid, hayBloqueActivo, onClicCelda, onQui
 
             {indices.map((bloqueIdx, posicion) => (
               <div key={bloqueIdx}>
-                <div
-                  className="grid gap-px bg-slate-200"
-                  style={{ gridTemplateColumns: '160px repeat(6, minmax(0, 1fr))' }}
-                >
-                  <div className={`${fondos.celda} flex flex-col justify-center px-3 py-2 text-xs font-semibold text-slate-700`}>
-                    {BLOQUES[bloqueIdx].horaInicio}
-                    <br />– {BLOQUES[bloqueIdx].horaFin}
+                <div className="grid gap-px bg-slate-200" style={ESTILO_COLUMNAS}>
+                  <div className={`${fondos.celda} flex flex-col justify-center px-2 py-2 text-xs font-semibold text-slate-700`}>
+                    <span className="truncate">{BLOQUES[bloqueIdx].horaInicio}</span>
+                    <span className="truncate">– {BLOQUES[bloqueIdx].horaFin}</span>
                   </div>
 
                   {DIAS.map((dia, diaIdx) => {
@@ -65,25 +78,23 @@ export function GridHorario({ bloques, grid, hayBloqueActivo, onClicCelda, onQui
                         etiqueta={`${dia}, ${horaInicio} – ${horaFin}`}
                         fondoVacio={diaIdx % 2 === 0 ? fondos.celda : fondos.celdaAlt}
                         hayBloqueActivo={hayBloqueActivo}
-                        onClic={(shiftKey) => onClicCelda({ bloqueIdx, diaIdx }, shiftKey)}
-                        onQuitar={() => onQuitarCelda({ bloqueIdx, diaIdx })}
+                        soloLectura={soloLectura}
+                        onClic={(shiftKey) => onClicCelda?.({ bloqueIdx, diaIdx }, shiftKey)}
+                        onQuitar={() => onQuitarCelda?.({ bloqueIdx, diaIdx })}
                       />
                     )
                   })}
                 </div>
 
                 {posicion === 0 && (
-                  <div
-                    className="grid gap-px bg-slate-200"
-                    style={{ gridTemplateColumns: '160px repeat(6, minmax(0, 1fr))' }}
-                  >
-                    <div className="bg-slate-100 px-3 py-1 text-center text-[11px] font-semibold uppercase text-slate-400">
+                  <div className="grid gap-px bg-slate-200" style={ESTILO_COLUMNAS}>
+                    <div className="truncate bg-slate-100 px-2 py-1 text-center text-[11px] font-semibold uppercase text-slate-400">
                       Receso
                     </div>
                     {DIAS.map((dia) => (
                       <div
                         key={dia}
-                        className="bg-slate-100 px-3 py-1 text-center text-[11px] font-semibold uppercase text-slate-400"
+                        className="truncate bg-slate-100 px-1.5 py-1 text-center text-[11px] font-semibold uppercase text-slate-400"
                       >
                         Receso
                       </div>

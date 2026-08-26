@@ -30,6 +30,16 @@ en `AppRouter.tsx`.
 | **Horarios** | módulo `horarios` — **el objetivo real del sistema** | Calendario/tabla de horarios, con aviso visual cuando el backend detecte un cruce |
 | Reportes | depende de qué pida la coordinación | Fuera de alcance hasta que se defina — no hay requisito claro todavía en `_Docs/Informes de requisitos/` |
 
+## Sección de estudiantes (planeada, no programada todavía)
+
+Dos pantallas nuevas para el rol `Aprendiz` (ya existe, sembrado en
+`database/02_datos_prueba.sql`): ingresar su ficha y ver su horario de la
+semana en modo solo lectura. Bloqueada por lo mismo que `Fichas`/`Horarios`
+arriba, más enrutamiento por rol que hoy no existe (`ProtectedRoute.tsx`
+solo revisa que haya sesión, no el rol) — el detalle completo y las
+preguntas de diseño sin resolver están en
+[`_Docs/Documentación general/SECCION_ESTUDIANTES.md`](../_Docs/Documentación%20general/SECCION_ESTUDIANTES.md).
+
 ## Otras cosas pendientes, no ligadas a un módulo nuevo
 
 - **Aprobar solicitudes de registro.** Hoy alguien se registra y queda sin

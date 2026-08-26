@@ -5,6 +5,8 @@ import senaLogo from '../assets/sena-logo.jpeg'
 import { useAuth } from '../hooks/useAuth'
 import { apiGet } from '../services/api'
 import type { Usuario } from '../types/api'
+import { NotificacionesPanel } from './NotificacionesPanel'
+import { NOTIFICACIONES } from '../data/notificacionesEjemplo'
 
 interface ItemNav {
   etiqueta: string
@@ -14,6 +16,7 @@ interface ItemNav {
 const NAV: ItemNav[] = [
   { etiqueta: 'Inicio', ruta: '/dashboard' },
   { etiqueta: 'Horarios', ruta: '/horarios/nuevo' },
+  { etiqueta: 'Historial de horarios', ruta: '/horarios/historial' },
   { etiqueta: 'Ambientes' },
   { etiqueta: 'Instructores' },
   { etiqueta: 'Fichas' },
@@ -56,6 +59,9 @@ export function AppShell({ activo, children }: AppShellProps) {
   const abiertaPorHoverRef = useRef(false)
   const temporizadorAperturaRef = useRef<number | null>(null)
   const temporizadorCierreRef = useRef<number | null>(null)
+  const [notifAbiertas, setNotifAbiertas] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
+  const hayNoLeidas = NOTIFICACIONES.some((n) => !n.leida)
 
   useEffect(() => {
     apiGet<Usuario>('/usuarios/me')
@@ -69,6 +75,27 @@ export function AppShell({ activo, children }: AppShellProps) {
       if (temporizadorCierreRef.current) window.clearTimeout(temporizadorCierreRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (!notifAbiertas) return
+
+    function alClicFuera(evento: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(evento.target as Node)) {
+        setNotifAbiertas(false)
+      }
+    }
+
+    function alPresionarTecla(evento: KeyboardEvent) {
+      if (evento.key === 'Escape') setNotifAbiertas(false)
+    }
+
+    document.addEventListener('mousedown', alClicFuera)
+    document.addEventListener('keydown', alPresionarTecla)
+    return () => {
+      document.removeEventListener('mousedown', alClicFuera)
+      document.removeEventListener('keydown', alPresionarTecla)
+    }
+  }, [notifAbiertas])
 
   function cancelarTemporizadores() {
     if (temporizadorAperturaRef.current) {
@@ -133,7 +160,7 @@ export function AppShell({ activo, children }: AppShellProps) {
         <div
           onMouseEnter={alEntrarBordeHover}
           onMouseLeave={alSalirBordeHover}
-          className="fixed left-0 top-0 z-40 h-screen w-4"
+          className="fixed left-0 top-0 z-40 h-screen w-4 print:hidden"
           aria-hidden="true"
         />
       )}
@@ -141,7 +168,7 @@ export function AppShell({ activo, children }: AppShellProps) {
       <aside
         onMouseEnter={alEntrarPanel}
         onMouseLeave={alSalirPanel}
-        className={`fixed left-0 top-0 z-50 flex h-screen w-60 shrink-0 flex-col justify-between border-r border-slate-200 bg-white p-5 shadow-2xl transition-transform duration-200 ${
+        className={`fixed left-0 top-0 z-50 flex h-screen w-60 shrink-0 flex-col justify-between border-r border-slate-200 bg-white p-5 shadow-2xl transition-transform duration-200 print:hidden ${
           navAbierta ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -213,7 +240,7 @@ export function AppShell({ activo, children }: AppShellProps) {
       </aside>
 
       <div>
-        <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3">
+        <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3 print:hidden">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -250,17 +277,28 @@ export function AppShell({ activo, children }: AppShellProps) {
               Trimestre 3 · 2026
             </span>
 
-            <span className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"
-                />
-              </svg>
-              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-orange-500" />
-            </span>
+            <div className="relative" ref={notifRef}>
+              <button
+                type="button"
+                onClick={() => setNotifAbiertas((abiertas) => !abiertas)}
+                title="Notificaciones"
+                className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"
+                  />
+                </svg>
+                {hayNoLeidas && (
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-orange-500" />
+                )}
+              </button>
+
+              {notifAbiertas && <NotificacionesPanel onCerrar={() => setNotifAbiertas(false)} />}
+            </div>
 
             <div className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sena-600 text-xs font-semibold text-white">

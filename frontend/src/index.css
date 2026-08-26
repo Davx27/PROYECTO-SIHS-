@@ -18,3 +18,15 @@ body {
     Roboto,
     sans-serif;
 }
+
+/* Sin esto, los navegadores quitan los fondos de color al imprimir/exportar
+   a PDF (para ahorrar tinta) — el grid de horarios pierde el color por
+   jornada (mañana/tarde/noche) que es justo lo que lo hace legible.
+   Usado por ExportarPdfButton.tsx (ver ese archivo para el patrón completo
+   de qué marcar con `print:hidden`). */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
