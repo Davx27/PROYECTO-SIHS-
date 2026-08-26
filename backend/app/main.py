@@ -6,9 +6,11 @@ from app.api.v1.roles import router as roles_router
 from app.api.v1.usuario_rol import router as usuario_rol_router
 from app.api.v1.usuarios import router as usuarios_router
 from app.core.config import settings
-from app.api.v1.dias_semana import router as dias_semana_router 
+from app.api.v1.dias_semana import router as dias_semana_router
 from app.api.v1.especialidades import router as especialidades_router
 from app.api.v1.jornadas import router as jornadas_router
+from app.api.v1.sedes import router as sedes_router
+from app.api.v1.ambientes import router as ambientes_router
 
 
 app = FastAPI(title=settings.app_name)
@@ -32,3 +34,5 @@ app.include_router(usuario_rol_router, prefix="/api/v1")
 app.include_router(dias_semana_router, prefix="/api/v1")
 app.include_router(especialidades_router, prefix="/api/v1")
 app.include_router(jornadas_router, prefix="/api/v1")
+app.include_router(sedes_router, prefix="/api/v1")
+app.include_router(ambientes_router, prefix="/api/v1")
