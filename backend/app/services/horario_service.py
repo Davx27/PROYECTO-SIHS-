@@ -24,6 +24,10 @@ class HorarioService:
         return HorarioRepository.obtener_por_id(db, id_horario)
 
     @staticmethod
+    def obtener_por_instructor(db, id_instructor):
+        return HorarioRepository.obtener_por_instructor(db, id_instructor)
+
+    @staticmethod
     def crear(db, data):
         errores = HorarioService._detectar_cruces(db, data)
         if errores:
