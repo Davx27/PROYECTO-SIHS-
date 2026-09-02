@@ -13,6 +13,14 @@ class HorarioRepository:
         return db.query(Horario).filter(Horario.idHorario == id_horario).first()
 
     @staticmethod
+    def obtener_por_instructor(db: Session, id_instructor):
+        return (
+            db.query(Horario)
+            .filter(Horario.idInstructor == id_instructor)
+            .all()
+        )
+
+    @staticmethod
     def obtener_dias(db: Session, id_horario: int) -> list[int]:
         filas = db.execute(horario_dia.select().where(horario_dia.c.idHorario == id_horario)).all()
         return [fila.idDia for fila in filas]
